@@ -7,7 +7,7 @@ name = "paperang-p2-lib"
 version = "0.1.0"
 description = "Python library for Paperang P2 thermal printer (USB protocol)"
 readme = "README.md"
-license = "MIT"
+license = {file = "LICENSE"}
 requires-python = ">=3.8"
 dependencies = [
     "pyusb>=1.2.1",
@@ -22,7 +22,7 @@ cjk = []  # Bundled wqy-microhei CJK font
 where = ["src"]
 
 [tool.setuptools.package-data]
-"paperang" = [
+paperang = [
     "profiles.json",
     "fonts/latin/*.ttf",
     "fonts/cjk/*.ttc",
