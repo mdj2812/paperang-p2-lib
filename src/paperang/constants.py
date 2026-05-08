@@ -1,5 +1,7 @@
 """Constants for Paperang P2 Printer."""
 
+import os
+
 # USB IDs
 VENDOR_ID = 0x4348
 PRODUCT_ID = 0x5584
