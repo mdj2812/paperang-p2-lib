@@ -50,7 +50,6 @@ jobs:
   test-cjk:
     name: Test (with [cjk])
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
