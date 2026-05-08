@@ -38,11 +38,38 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install package
-        run: python3 -m pip install .
+      - name: Install package with extras
+        run: python3 -m pip install ".[qr]"
+
+      - name: Run tests
+        run: python3 -m pytest tests/ -v
 
       - name: Import test
         run: python3 -c "from paperang import PaperangP2; print('Import OK')"
+
+  test-cjk:
+    name: Test (with [cjk])
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install fonts-cjk from PyPI
+        run: python3 -m pip install paperang-p2-fonts-cjk
+
+      - name: Install paperang-p2-lib with [cjk]
+        run: python3 -m pip install ".[cjk,qr]"
+
+      - name: Run tests
+        run: python3 -m pytest tests/ -v
+
+      - name: Verify CJK fonts detected
+        run: python3 -c "from paperang import BUNDLED_FONTS_CJK; assert len(BUNDLED_FONTS_CJK) > 0, 'CJK fonts not found!'; print('CJK fonts OK:', BUNDLED_FONTS_CJK)"
 
   build:
     name: Build

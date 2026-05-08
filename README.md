@@ -12,7 +12,7 @@ Based on [hurui200320/java-paperang-p2-usb](https://github.com/hurui200320/java-
 ## Features
 
 - USB connection to Paperang P2 printer
-- Text printing (CJK support with optional `[cjk]` extra)
+- Text printing (CJK support via optional `[cjk]` extra)
 - Image printing with adjustable brightness/contrast/threshold
 - QR code generation and printing
 - Pickup code printing (large bold)
@@ -23,14 +23,17 @@ Based on [hurui200320/java-paperang-p2-usb](https://github.com/hurui200320/java-
 ## Installation
 
 ```bash
-# Basic
+# Basic (Latin fonts only)
 pip install paperang-p2-lib
 
 # With QR code support
 pip install paperang-p2-lib[qr]
 
+# With CJK (Chinese/Japanese/Korean) text support
+pip install paperang-p2-lib[cjk]
+
 # All extras
-pip install paperang-p2-lib[qr]
+pip install paperang-p2-lib[qr,cjk]
 ```
 
 ## Usage
@@ -43,6 +46,9 @@ printer.connect()
 
 # Print text
 printer.print_text("Hello World!", font_size=24)
+
+# Print CJK text (requires [cjk] extra)
+printer.print_text("你好世界", font_size=24)
 
 # Print image
 printer.print_image("photo.jpg", profile="portrait")
@@ -87,13 +93,26 @@ battery = printer.get_battery()
 
 ## Fonts
 
-| Font | Size | Included | Purpose |
-|------|------|----------|---------|
-| DejaVuSans | 742K | ✅ Always | Latin text fallback |
-| DejaVuSans-Bold | 693K | ✅ Always | Pickup codes (bold) |
-| wqy-microhei | 5.0M | ✅ Always | CJK (Chinese/Japanese/Korean) |
+| Font | Size | Package | Purpose |
+|------|------|---------|---------|
+| DejaVuSans | 742K | ✅ Always included | Latin text fallback |
+| DejaVuSans-Bold | 693K | ✅ Always included | Pickup codes (bold) |
+| wqy-microhei | 5.0M | `[cjk]` extra | CJK (Chinese/Japanese/Korean) |
 
-CJK text is supported out of the box with the bundled wqy-microhei font.
+### CJK Support
+
+CJK text printing requires the optional `[cjk]` dependency:
+
+```bash
+pip install paperang-p2-lib[cjk]
+```
+
+This installs [paperang-p2-fonts-cjk](https://github.com/mdj2812/paperang-p2-fonts-cjk),
+which provides the 文泉驿微米黑 (WenQuanYi Micro Hei) font.
+
+When `[cjk]` is installed, `print_text()` automatically uses the CJK font first,
+falling back to DejaVuSans for Latin characters. Without `[cjk]`, CJK characters
+will render as boxes or missing glyph symbols.
 
 ## Protocol Details
 
@@ -127,6 +146,7 @@ Custom seed `0x35769521` (standard CRC32 uses `0x00000000`).
 ## Related Projects
 
 - [paperang-p2-usb](https://github.com/mdj2812/paperang-p2-usb) — CLI + MQTT wrapper
+- [paperang-p2-fonts-cjk](https://github.com/mdj2812/paperang-p2-fonts-cjk) — CJK font package
 - [paperang-hacs](https://github.com/mdj2812/paperang-hacs) — Home Assistant integration (HACS)
 
 ## License
