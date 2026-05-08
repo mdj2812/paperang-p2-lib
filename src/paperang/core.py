@@ -260,13 +260,17 @@ class PaperangP2:
         return True
 
     def _resolve_font_paths(self, font_list):
-        """Resolve bundled font paths, skipping missing files."""
+        """Resolve font paths. Handles both absolute paths and relative-to-package paths."""
         base_dir = os.path.dirname(os.path.abspath(__file__))
         resolved = []
         for f in font_list:
-            path = os.path.join(base_dir, f)
-            if os.path.exists(path):
-                resolved.append(path)
+            if os.path.isabs(f):
+                if os.path.exists(f):
+                    resolved.append(f)
+            else:
+                path = os.path.join(base_dir, f)
+                if os.path.exists(path):
+                    resolved.append(path)
         return resolved
 
     def _get_text_fonts(self):

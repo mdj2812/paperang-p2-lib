@@ -33,7 +33,16 @@ BUNDLED_FONTS_PICKUP = [
     "fonts/latin/DejaVuSans.ttf",
 ]
 
-# CJK fonts — only included when installed with [cjk] extra
-BUNDLED_FONTS_CJK = [
-    "fonts/cjk/wqy-microhei.ttc",
-]
+# CJK fonts — provided by paperang-p2-fonts-cjk (optional)
+# When installed, fonts live in paperang_p2_fonts_cjk/fonts/
+try:
+    import importlib.resources
+    _cjk_pkg = importlib.resources.files("paperang_p2_fonts_cjk")
+    _cjk_fonts_path = str(_cjk_pkg / "fonts")
+    BUNDLED_FONTS_CJK = [
+        os.path.join(_cjk_fonts_path, "wqy-microhei.ttc"),
+    ]
+except ImportError:
+    BUNDLED_FONTS_CJK = []
+except Exception:
+    BUNDLED_FONTS_CJK = []
