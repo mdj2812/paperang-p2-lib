@@ -16,9 +16,14 @@ dependencies = [
 
 [project.optional-dependencies]
 qr = ["qrcode[pil]>=7.4.2"]
+cjk = []  # Bundled wqy-microhei CJK font
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-"paperang" = ["profiles.json", "fonts/*.ttf", "fonts/*.ttc"]
+"paperang" = [
+    "profiles.json",
+    "fonts/latin/*.ttf",
+    "fonts/cjk/*.ttc",
+]

@@ -23,12 +23,17 @@ DEFAULT_FONT_SIZE = 24
 DEFAULT_FEED_BEFORE = 50
 DEFAULT_FEED_AFTER = 300
 
-# Font files (relative to package directory)
+# Bundled font files (relative to package directory)
+# Latin fonts — always included
 BUNDLED_FONTS_TEXT = [
-    "fonts/wqy-microhei.ttc",  # CJK support
-    "fonts/DejaVuSans.ttf",    # Latin fallback
+    "fonts/latin/DejaVuSans.ttf",
 ]
 BUNDLED_FONTS_PICKUP = [
-    "fonts/DejaVuSans-Bold.ttf",
-    "fonts/DejaVuSans.ttf",
+    "fonts/latin/DejaVuSans-Bold.ttf",
+    "fonts/latin/DejaVuSans.ttf",
+]
+
+# CJK fonts — only included when installed with [cjk] extra
+BUNDLED_FONTS_CJK = [
+    "fonts/cjk/wqy-microhei.ttc",
 ]

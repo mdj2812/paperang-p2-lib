@@ -18,6 +18,7 @@ from .constants import (
     DEFAULT_FEED_AFTER,
     BUNDLED_FONTS_TEXT,
     BUNDLED_FONTS_PICKUP,
+    BUNDLED_FONTS_CJK,
 )
 from .core import (
     crc32_paperang,
@@ -35,7 +36,7 @@ __all__ = [
     "DEFAULT_HEAT_DENSITY", "DEFAULT_THRESHOLD",
     "DEFAULT_BRIGHTNESS", "DEFAULT_CONTRAST", "DEFAULT_FONT_SIZE",
     "DEFAULT_FEED_BEFORE", "DEFAULT_FEED_AFTER",
-    "BUNDLED_FONTS_TEXT", "BUNDLED_FONTS_PICKUP",
+    "BUNDLED_FONTS_TEXT", "BUNDLED_FONTS_PICKUP", "BUNDLED_FONTS_CJK",
     # Core
     "crc32_paperang", "pack_packet", "PaperangP2",
     "load_profiles", "list_profiles",

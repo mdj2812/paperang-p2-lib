@@ -7,7 +7,7 @@ Based on [hurui200320/java-paperang-p2-usb](https://github.com/hurui200320/java-
 ## Features
 
 - USB connection to Paperang P2 printer
-- Text printing with CJK font support (bundled fonts included)
+- Text printing (CJK support with optional `[cjk]` extra)
 - Image printing with adjustable brightness/contrast/threshold
 - QR code generation and printing
 - Pickup code printing (large bold)
@@ -18,10 +18,17 @@ Based on [hurui200320/java-paperang-p2-usb](https://github.com/hurui200320/java-
 ## Installation
 
 ```bash
-pip install .
+# Basic (Latin fonts only)
+pip install paperang-p2-lib
 
 # With QR code support
-pip install ".[qr]"
+pip install paperang-p2-lib[qr]
+
+# With CJK font support (Chinese, Japanese, Korean)
+pip install paperang-p2-lib[cjk]
+
+# All extras
+pip install paperang-p2-lib[qr,cjk]
 ```
 
 ## Usage
@@ -56,7 +63,7 @@ battery = printer.get_battery()
 | Method | Description |
 |--------|-------------|
 | `connect()` | Connect to printer via USB |
-| `print_text(text, font_size, heat_density)` | Print text with CJK support |
+| `print_text(text, font_size, heat_density)` | Print text (CJK requires `[cjk]` extra) |
 | `print_image(path, heat_density, feed_before, feed_after, threshold, brightness, contrast)` | Print image |
 | `print_qr(content, box_size, heat_density, max_width)` | Print QR code |
 | `print_pickup_code(code, heat_density)` | Print large bold pickup code |
@@ -75,6 +82,16 @@ battery = printer.get_battery()
 - `pack_packet(cmd, data, packet_remain)` — Pack protocol packet
 - `load_profiles(profiles_path)` — Load print profiles from JSON
 - `list_profiles(profiles_path)` — Print available profiles
+
+## Fonts
+
+| Font | Size | Included | Purpose |
+|------|------|----------|---------|
+| DejaVuSans | 742K | ✅ Always | Latin text fallback |
+| DejaVuSans-Bold | 693K | ✅ Always | Pickup codes (bold) |
+| wqy-microhei | 5.0M | 🔲 `[cjk]` extra | CJK (Chinese/Japanese/Korean) |
+
+Without `[cjk]`, Chinese/Japanese/Korean text will fall back to the system font or default (may show squares).
 
 ## Protocol Details
 
@@ -104,16 +121,6 @@ battery = printer.get_battery()
 ### CRC32
 
 Custom seed `0x35769521` (standard CRC32 uses `0x00000000`).
-
-## Bundled Fonts
-
-The library includes fonts for CJK text printing:
-
-- **wqy-microhei.ttc** (5MB) — Chinese/Japanese/Korean support
-- **DejaVuSans.ttf** — Latin fallback
-- **DejaVuSans-Bold.ttf** — Bold Latin (pickup codes)
-
-Fonts are loaded from the package directory by default. You can override by passing `font_paths_text` or `font_paths_pickup` to the `PaperangP2` constructor.
 
 ## Related Projects
 

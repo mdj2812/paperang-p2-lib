@@ -17,6 +17,7 @@ from .constants import (
     MAX_PACKET_DATA,
     BUNDLED_FONTS_TEXT,
     BUNDLED_FONTS_PICKUP,
+    BUNDLED_FONTS_CJK,
 )
 
 
@@ -259,20 +260,28 @@ class PaperangP2:
         return True
 
     def _resolve_font_paths(self, font_list):
-        """Resolve font paths: bundled (relative to package) first, then absolute."""
+        """Resolve bundled font paths, skipping missing files."""
         base_dir = os.path.dirname(os.path.abspath(__file__))
         resolved = []
         for f in font_list:
             path = os.path.join(base_dir, f)
             if os.path.exists(path):
                 resolved.append(path)
-            elif os.path.isabs(f) and os.path.exists(f):
-                resolved.append(f)
         return resolved
 
+    def _get_text_fonts(self):
+        """Get font paths for text printing: CJK first (if installed), then Latin."""
+        if self.font_paths_text:
+            return self.font_paths_text
+        # CJK fonts (optional, only present when installed with [cjk])
+        fonts = self._resolve_font_paths(BUNDLED_FONTS_CJK)
+        # Latin fonts (always included)
+        fonts.extend(self._resolve_font_paths(BUNDLED_FONTS_TEXT))
+        return fonts
+
     def print_text(self, text, font_size=24, heat_density=75):
-        """Print text with CJK support."""
-        font_paths = self.font_paths_text or self._resolve_font_paths(BUNDLED_FONTS_TEXT)
+        """Print text. CJK support requires installing with [cjk] extra."""
+        font_paths = self._get_text_fonts()
         font = self._load_font(font_paths, font_size)
 
         lines = text.split('\n')
