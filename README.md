@@ -1,5 +1,10 @@
 # paperang-p2-lib
 
+[![PyPI - Version](https://img.shields.io/pypi/v/paperang-p2-lib.svg?style=flat-square)](https://pypi.org/project/paperang-p2-lib/)
+[![Python Versions](https://img.shields.io/pypi/pyversions/paperang-p2-lib.svg?style=flat-square)](https://pypi.org/project/paperang-p2-lib/)
+[![CI](https://github.com/mdj2812/paperang-p2-lib/actions/workflows/ci.yml/badge.svg)](https://github.com/mdj2812/paperang-p2-lib/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
+
 Python library for Paperang P2 thermal printer (USB protocol).
 
 Based on [hurui200320/java-paperang-p2-usb](https://github.com/hurui200320/java-paperang-p2-usb) protocol.
@@ -18,17 +23,14 @@ Based on [hurui200320/java-paperang-p2-usb](https://github.com/hurui200320/java-
 ## Installation
 
 ```bash
-# Basic (Latin fonts only)
+# Basic
 pip install paperang-p2-lib
 
 # With QR code support
 pip install paperang-p2-lib[qr]
 
-# With CJK font support (Chinese, Japanese, Korean)
-pip install paperang-p2-lib[cjk]
-
 # All extras
-pip install paperang-p2-lib[qr,cjk]
+pip install paperang-p2-lib[qr]
 ```
 
 ## Usage
@@ -89,9 +91,9 @@ battery = printer.get_battery()
 |------|------|----------|---------|
 | DejaVuSans | 742K | ✅ Always | Latin text fallback |
 | DejaVuSans-Bold | 693K | ✅ Always | Pickup codes (bold) |
-| wqy-microhei | 5.0M | 🔲 `[cjk]` extra | CJK (Chinese/Japanese/Korean) |
+| wqy-microhei | 5.0M | ✅ Always | CJK (Chinese/Japanese/Korean) |
 
-Without `[cjk]`, Chinese/Japanese/Korean text will fall back to the system font or default (may show squares).
+CJK text is supported out of the box with the bundled wqy-microhei font.
 
 ## Protocol Details
 
