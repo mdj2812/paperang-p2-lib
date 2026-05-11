@@ -1,4 +1,12 @@
-"""Paperang P2 USB Printer Library."""
+"""Paperang P2 USB Printer Library.
+
+Modules:
+    protocol   — CRC, packet pack/unpack, command codes
+    printer    — USB connection, low-level send/read, basic commands
+    printing   — Image/text/QR rendering, high-level print functions
+    profiles   — Print profile management
+    constants  — USB IDs, dimensions, defaults, font paths
+"""
 
 from .constants import (
     VENDOR_ID,
@@ -32,7 +40,8 @@ from .protocol import (
     CMD_FEED_PAPER,
     CMD_SET_PAPER,
 )
-from .core import PaperangP2
+from .printer import PaperangPrinter
+from .printing import PaperangP2
 from .profiles import load_profiles, list_profiles
 
 __all__ = [
@@ -48,8 +57,8 @@ __all__ = [
     "crc32_paperang", "pack_packet", "unpack_response",
     "CMD_PRINT_BITMAP", "CMD_GET_STATUS", "CMD_GET_BATTERY",
     "CMD_PRINT_TEST", "CMD_SET_HEAT", "CMD_FEED_PAPER", "CMD_SET_PAPER",
-    # Core
-    "PaperangP2",
+    # Classes
+    "PaperangPrinter", "PaperangP2",
     # Profiles
     "load_profiles", "list_profiles",
 ]

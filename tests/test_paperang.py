@@ -12,7 +12,8 @@ from paperang.protocol import (
     crc32_paperang, pack_packet, unpack_response,
     FRAME_HEADER, FRAME_FOOTER,
 )
-from paperang.core import PaperangP2
+from paperang.printer import PaperangPrinter
+from paperang.printing import PaperangP2
 
 
 class TestConstants:
@@ -51,7 +52,6 @@ class TestCJKOptional:
     def test_latin_fonts_always_available(self):
         """Latin font files are always bundled and should exist."""
         pkg_dir = os.path.dirname(os.path.abspath(__file__))
-        # Navigate from tests/ to src/paperang/
         src_dir = os.path.join(pkg_dir, "..", "src", "paperang")
         for font_rel in BUNDLED_FONTS_TEXT:
             font_path = os.path.join(src_dir, font_rel)
@@ -81,9 +81,7 @@ class TestResolveFontPaths:
     def test_resolve_absolute_paths(self):
         """Absolute paths should be returned as-is if they exist."""
         printer = PaperangP2()
-        # Use the resolved paths from relative test
         resolved = printer._resolve_font_paths(BUNDLED_FONTS_TEXT)
-        # Re-resolve from absolute — should return the same
         re_resolved = printer._resolve_font_paths(resolved)
         assert re_resolved == resolved
 
@@ -126,15 +124,15 @@ class TestCRCAndPacket:
         data = b"\x00\x01\x02"
         packet = pack_packet(cmd, data)
 
-        assert packet[0] == FRAME_HEADER  # Header
-        assert packet[1] == cmd            # Command
-        assert packet[-1] == FRAME_FOOTER  # Footer
-        assert len(packet) > 5             # At least header + cmd + remain + data_len + footer
+        assert packet[0] == FRAME_HEADER
+        assert packet[1] == cmd
+        assert packet[-1] == FRAME_FOOTER
+        assert len(packet) > 5
 
     def test_pack_packet_with_remain(self):
         """Packet with packet_remain should encode correctly."""
         packet = pack_packet(0x00, b"test", 5)
-        assert packet[2] == 5  # packet_remain
+        assert packet[2] == 5
 
 
 class TestUnpackResponse:
@@ -150,15 +148,47 @@ class TestUnpackResponse:
         assert result['data'] == data
 
     def test_unpack_too_short(self):
-        """Should return None for incomplete frames."""
         assert unpack_response(b"\x02\x03") is None
 
     def test_unpack_bad_footer(self):
-        """Should return None when footer is wrong."""
         packet = bytearray(pack_packet(0x01, b"test"))
-        packet[-1] = 0xFF  # corrupt footer
+        packet[-1] = 0xFF
         assert unpack_response(packet) is None
 
     def test_unpack_no_header(self):
-        """Should return None when header byte is missing."""
         assert unpack_response(b"\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a") is None
+
+
+class TestClassHierarchy:
+    """Test that PaperangP2 correctly inherits from PaperangPrinter."""
+
+    def test_p2_is_printer(self):
+        assert issubclass(PaperangP2, PaperangPrinter)
+
+    def test_printer_has_low_level(self):
+        p = PaperangPrinter()
+        assert hasattr(p, 'connect')
+        assert hasattr(p, 'send')
+        assert hasattr(p, 'send_multi_packet')
+        assert hasattr(p, 'read_response')
+        assert hasattr(p, 'feed')
+        assert hasattr(p, 'set_heat_density')
+        assert hasattr(p, 'set_paper_type')
+        assert hasattr(p, 'print_bitmap')
+
+    def test_p2_has_high_level(self):
+        p = PaperangP2()
+        assert hasattr(p, 'print_image')
+        assert hasattr(p, 'print_text')
+        assert hasattr(p, 'print_qr')
+        assert hasattr(p, 'print_pickup_code')
+        assert hasattr(p, 'print_pattern_test')
+        assert hasattr(p, 'print_heat_density_test')
+
+    def test_p2_inherits_low_level(self):
+        """PaperangP2 should have all low-level methods too."""
+        p = PaperangP2()
+        assert hasattr(p, 'connect')
+        assert hasattr(p, 'send')
+        assert hasattr(p, 'feed')
+        assert hasattr(p, 'print_bitmap')
