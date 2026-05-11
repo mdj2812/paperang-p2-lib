@@ -2,14 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.3.0] - 2026-05-11
+## [0.2.1] - 2026-05-11
 
 ### Changed
-- Protocol code (CRC, packet pack/unpack, command codes) extracted into `protocol.py`
-- Profile management extracted into `profiles.py`
+- Module restructure: protocol, printer, printing, profiles separated from core
+- `protocol.py`: CRC, pack/unpack, command codes
+- `printer.py`: USB connection, low-level send/read, basic commands (`PaperangPrinter` class)
+- `printing.py`: image/text/QR/pickup rendering (`PaperangP2` extends `PaperangPrinter`)
+- `profiles.py`: print profile management
+- `constants.py` slimmed to USB IDs, print params, defaults, font paths
+- `core.py` now a thin compat re-export layer
 - Added `unpack_response()` for parsing printer response frames
-- `constants.py` now only holds USB IDs, print params, defaults, and font paths
-- Tests updated to match new module structure; 4 new tests for `unpack_response()`
+- Tests updated for new structure; +8 new tests (24 total)
 
 ## [0.2.0] - 2026-05-08
 
