@@ -122,15 +122,16 @@ class PaperangPrinter:
     def _send_get(self, cmd):
         """Helper: send a GET command and return response data.
 
-        GET commands receive two frames in one response:
-        1. Echo of the original command (discarded)
-        2. Actual data with a different response code (returned)
+        GET commands receive multiple frames in one response:
+        - Echo of the original command (same cmd)
+        - Actual data with response code = cmd + 1
+        We iterate all frames and find the one matching cmd + 1.
         """
         self.send(cmd, _GET_DATA)
         frames = self.read_response()
-        # Return data from the non-echo frame (second one)
+        expected_resp = cmd + 1
         for frame in frames:
-            if frame['cmd'] != cmd:
+            if frame['cmd'] == expected_resp:
                 return frame['data']
         return None
 
