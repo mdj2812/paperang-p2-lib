@@ -108,26 +108,31 @@ class PaperangPrinter:
         return True
 
     def read_response(self, timeout=1000):
-        """Read and parse response from printer."""
+        """Read and parse all response frames from printer.
+
+        Returns list of frame dicts. Each dict has ``cmd``, ``packet_remain``,
+        ``data``, ``crc``. Returns empty list on error.
+        """
         try:
             resp = self.dev.read(self.ep_in.bEndpointAddress, 64, timeout=timeout)
             return unpack_response(resp)
         except Exception:
-            return None
+            return []
 
     def _send_get(self, cmd):
         """Helper: send a GET command and return response data.
 
-        GET commands receive two responses:
+        GET commands receive two frames in one response:
         1. Echo of the original command (discarded)
         2. Actual data with a different response code (returned)
         """
         self.send(cmd, _GET_DATA)
-        # Read and discard first response (command echo)
-        self.read_response()
-        # Read second response (actual data)
-        resp = self.read_response()
-        return resp['data'] if resp and resp['data'] else None
+        frames = self.read_response()
+        # Return data from the non-echo frame (second one)
+        for frame in frames:
+            if frame['cmd'] != cmd:
+                return frame['data']
+        return None
 
     # ── Printer controls ────────────────────────────────────────
 

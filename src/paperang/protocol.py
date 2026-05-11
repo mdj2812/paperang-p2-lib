@@ -96,37 +96,46 @@ def pack_packet(cmd, data=b'', packet_remain=0):
 
 
 def unpack_response(raw_bytes):
-    """Parse a response frame from raw bytes.
+    """Parse all response frames from raw bytes.
 
-    Returns dict with ``cmd``, ``packet_remain``, ``data``, ``crc`` or ``None``
-    if the frame is invalid or incomplete.
+    GET commands receive two frames in a single response:
+    1. Echo of the original command
+    2. Actual data with a different response code
+
+    Returns a list of dicts, each with ``cmd``, ``packet_remain``, ``data``, ``crc``.
+    Returns empty list if no valid frames found.
     """
-    if len(raw_bytes) < 10:
-        return None
+    frames = []
+    offset = 0
+    buf = raw_bytes if isinstance(raw_bytes, (bytes, bytearray)) else bytes(raw_bytes)
 
-    # Find frame header
-    start_idx = 0
-    for i in range(len(raw_bytes)):
-        if raw_bytes[i] == FRAME_HEADER:
-            start_idx = i
+    while offset < len(buf) - 9:  # minimum frame: 1+1+1+2+0+4+1 = 10
+        # Find frame header
+        header_idx = buf.find(bytes([FRAME_HEADER]), offset)
+        if header_idx < 0:
             break
 
-    if start_idx + 10 > len(raw_bytes):
-        return None
+        if header_idx + 10 > len(buf):
+            break
 
-    cmd = raw_bytes[start_idx + 1]
-    packet_remain = raw_bytes[start_idx + 2]
-    data_len = struct.unpack('<H', raw_bytes[start_idx + 3:start_idx + 5])[0]
+        cmd = buf[header_idx + 1]
+        packet_remain = buf[header_idx + 2]
+        data_len = struct.unpack('<H', buf[header_idx + 3:header_idx + 5])[0]
 
-    if start_idx + 5 + data_len + 4 + 1 > len(raw_bytes):
-        return None
+        frame_end = header_idx + 5 + data_len + 4 + 1  # header + cmd + remain + len + data + crc + footer
+        if frame_end > len(buf):
+            break
 
-    data = bytes(raw_bytes[start_idx + 5:start_idx + 5 + data_len])
-    crc = struct.unpack('<I',
-                        raw_bytes[start_idx + 5 + data_len:start_idx + 5 + data_len + 4])[0]
-    end_byte = raw_bytes[start_idx + 5 + data_len + 4]
+        data = bytes(buf[header_idx + 5:header_idx + 5 + data_len])
+        crc = struct.unpack('<I',
+                            buf[header_idx + 5 + data_len:header_idx + 5 + data_len + 4])[0]
+        end_byte = buf[header_idx + 5 + data_len + 4]
 
-    if end_byte != FRAME_FOOTER:
-        return None
+        if end_byte != FRAME_FOOTER:
+            offset = header_idx + 1
+            continue
 
-    return {'cmd': cmd, 'packet_remain': packet_remain, 'data': data, 'crc': crc}
+        frames.append({'cmd': cmd, 'packet_remain': packet_remain, 'data': data, 'crc': crc})
+        offset = frame_end
+
+    return frames

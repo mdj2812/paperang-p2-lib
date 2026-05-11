@@ -139,24 +139,35 @@ class TestUnpackResponse:
     """Test response frame parsing."""
 
     def test_unpack_valid_frame(self):
-        """Should parse a well-formed response."""
+        """Should parse a well-formed response as a list with one frame."""
         data = b"\x01\x02\x03"
         packet = pack_packet(0x0C, data)
         result = unpack_response(packet)
-        assert result is not None
-        assert result['cmd'] == 0x0C
-        assert result['data'] == data
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert result[0]['cmd'] == 0x0C
+        assert result[0]['data'] == data
 
     def test_unpack_too_short(self):
-        assert unpack_response(b"\x02\x03") is None
+        assert unpack_response(b"\x02\x03") == []
 
     def test_unpack_bad_footer(self):
         packet = bytearray(pack_packet(0x01, b"test"))
         packet[-1] = 0xFF
-        assert unpack_response(packet) is None
+        assert unpack_response(packet) == []
 
     def test_unpack_no_header(self):
-        assert unpack_response(b"\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a") is None
+        assert unpack_response(b"\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a") == []
+
+    def test_unpack_multiple_frames(self):
+        """Two frames packed together should both be parsed."""
+        frame1 = pack_packet(0x0C, b"echo")
+        frame2 = pack_packet(0x11, b"data")
+        result = unpack_response(frame1 + frame2)
+        assert len(result) == 2
+        assert result[0]['cmd'] == 0x0C
+        assert result[1]['cmd'] == 0x11
+        assert result[1]['data'] == b"data"
 
 
 class TestClassHierarchy:
