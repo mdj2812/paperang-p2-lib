@@ -116,8 +116,16 @@ class PaperangPrinter:
             return None
 
     def _send_get(self, cmd):
-        """Helper: send a GET command with data byte 0x01 and return response data."""
+        """Helper: send a GET command and return response data.
+
+        GET commands receive two responses:
+        1. Echo of the original command (discarded)
+        2. Actual data with a different response code (returned)
+        """
         self.send(cmd, _GET_DATA)
+        # Read and discard first response (command echo)
+        self.read_response()
+        # Read second response (actual data)
         resp = self.read_response()
         return resp['data'] if resp and resp['data'] else None
 
