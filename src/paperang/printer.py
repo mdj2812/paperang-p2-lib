@@ -18,8 +18,32 @@ from .protocol import (
     CMD_SET_HEAT,
     CMD_FEED_PAPER,
     CMD_SET_PAPER,
+    CMD_GET_VOLTAGE,
+    CMD_GET_TEMP,
+    CMD_GET_VERSION,
+    CMD_GET_MODEL,
+    CMD_GET_BT_MAC,
+    CMD_GET_SN,
+    CMD_GET_HEAT,
+    CMD_GET_POWER_DOWN,
+    CMD_GET_BOARD_VERSION,
+    CMD_GET_HW_INFO,
+    CMD_GET_MAX_GAP,
+    CMD_GET_PAPER_TYPE,
+    CMD_GET_COUNTRY,
+    CMD_GET_FACTORY,
+    CMD_SET_FACTORY,
+    CMD_SET_CRC_KEY,
+    CMD_SET_POWER_DOWN,
+    CMD_FEED_TO_HEAD,
+    CMD_PRINT_DEFAULT_PARA,
+    CMD_SET_MAX_GAP,
+    CMD_DISCONNECT_BT,
     MAX_PACKET_DATA,
 )
+
+# All "get" commands require a single data byte
+_GET_DATA = struct.pack('<B', 1)
 
 
 class PaperangPrinter:
@@ -91,6 +115,12 @@ class PaperangPrinter:
         except Exception:
             return None
 
+    def _send_get(self, cmd):
+        """Helper: send a GET command with data byte 0x01 and return response data."""
+        self.send(cmd, _GET_DATA)
+        resp = self.read_response()
+        return resp['data'] if resp and resp['data'] else None
+
     # ── Printer controls ────────────────────────────────────────
 
     def feed(self, lines=100):
@@ -103,28 +133,126 @@ class PaperangPrinter:
         return self.send(CMD_SET_HEAT, struct.pack('<H', density))
 
     def set_paper_type(self, paper_type=0):
-        """Set paper type (0=normal, 1=continuous)."""
+        """Set paper type (0=normal, 1=continuous) (command 0x2C)."""
         return self.send(CMD_SET_PAPER, bytes([paper_type]))
 
     def print_test_page(self):
-        """Print test page."""
+        """Print test page (command 0x1B)."""
         return self.send(CMD_PRINT_TEST)
 
+    def feed_to_head(self, lines=100):
+        """Feed paper to print head position (command 0x21)."""
+        return self.send(CMD_FEED_TO_HEAD, struct.pack('<H', lines))
+
+    def print_default_para(self):
+        """Print default parameters page (command 0x22)."""
+        return self.send(CMD_PRINT_DEFAULT_PARA)
+
+    # ── GET status/info commands ────────────────────────────────
+
     def get_status(self):
-        """Get printer status."""
-        self.send(CMD_GET_STATUS, struct.pack('<B', 1))
-        resp = self.read_response()
-        if resp:
-            return resp['data'].hex() if resp['data'] else None
-        return None
+        """Get printer status (command 0x0C). Returns hex string."""
+        data = self._send_get(CMD_GET_STATUS)
+        return data.hex() if data else None
 
     def get_battery(self):
-        """Get battery level."""
-        self.send(CMD_GET_BATTERY, struct.pack('<B', 1))
-        resp = self.read_response()
-        if resp and resp['data']:
-            return resp['data'][0] if len(resp['data']) > 0 else None
-        return None
+        """Get battery level (command 0x10). Returns int or None."""
+        data = self._send_get(CMD_GET_BATTERY)
+        return data[0] if data and len(data) > 0 else None
+
+    def get_voltage(self):
+        """Get battery voltage in mV (command 0x0E). Returns int or None."""
+        data = self._send_get(CMD_GET_VOLTAGE)
+        return struct.unpack('<H', data)[0] if data and len(data) >= 2 else None
+
+    def get_temperature(self):
+        """Get printer temperature (command 0x12). Returns int or None."""
+        data = self._send_get(CMD_GET_TEMP)
+        return data[0] if data and len(data) > 0 else None
+
+    def get_heat_density(self):
+        """Get current heat density (command 0x1C). Returns int or None."""
+        data = self._send_get(CMD_GET_HEAT)
+        return struct.unpack('<H', data)[0] if data and len(data) >= 2 else None
+
+    def get_power_down_time(self):
+        """Get auto power-down time in seconds (command 0x1F). Returns int or None."""
+        data = self._send_get(CMD_GET_POWER_DOWN)
+        return struct.unpack('<H', data)[0] if data and len(data) >= 2 else None
+
+    def get_paper_type(self):
+        """Get current paper type (command 0x2A). Returns int or None."""
+        data = self._send_get(CMD_GET_PAPER_TYPE)
+        return data[0] if data and len(data) > 0 else None
+
+    def get_max_gap(self):
+        """Get max gap length (command 0x28). Returns int or None."""
+        data = self._send_get(CMD_GET_MAX_GAP)
+        return struct.unpack('<H', data)[0] if data and len(data) >= 2 else None
+
+    def get_country(self):
+        """Get country name (command 0x2D). Returns string or None."""
+        data = self._send_get(CMD_GET_COUNTRY)
+        return data.decode('utf-8', errors='replace') if data else None
+
+    # ── GET version/hardware info ───────────────────────────────
+
+    def get_version(self):
+        """Get firmware version (command 0x04). Returns string or None."""
+        data = self._send_get(CMD_GET_VERSION)
+        return data.decode('utf-8', errors='replace') if data else None
+
+    def get_model(self):
+        """Get printer model (command 0x06). Returns string or None."""
+        data = self._send_get(CMD_GET_MODEL)
+        return data.decode('utf-8', errors='replace') if data else None
+
+    def get_bt_mac(self):
+        """Get Bluetooth MAC address (command 0x08). Returns hex string or None."""
+        data = self._send_get(CMD_GET_BT_MAC)
+        return data.hex() if data else None
+
+    def get_sn(self):
+        """Get serial number (command 0x0A). Returns string or None."""
+        data = self._send_get(CMD_GET_SN)
+        return data.decode('utf-8', errors='replace') if data else None
+
+    def get_board_version(self):
+        """Get board version (command 0x23). Returns string or None."""
+        data = self._send_get(CMD_GET_BOARD_VERSION)
+        return data.decode('utf-8', errors='replace') if data else None
+
+    def get_hw_info(self):
+        """Get hardware info (command 0x25). Returns hex string or None."""
+        data = self._send_get(CMD_GET_HW_INFO)
+        return data.hex() if data else None
+
+    def get_factory_status(self):
+        """Get factory status (command 0x15). Returns hex string or None."""
+        data = self._send_get(CMD_GET_FACTORY)
+        return data.hex() if data else None
+
+    # ── SET commands ────────────────────────────────────────────
+
+    def set_power_down_time(self, seconds):
+        """Set auto power-down time in seconds (command 0x1E)."""
+        return self.send(CMD_SET_POWER_DOWN, struct.pack('<H', seconds))
+
+    def set_max_gap(self, gap):
+        """Set max gap length (command 0x27)."""
+        return self.send(CMD_SET_MAX_GAP, struct.pack('<H', gap))
+
+    def set_crc_key(self, key):
+        """Set CRC key (command 0x18). Key should be 4 bytes."""
+        return self.send(CMD_SET_CRC_KEY, key if isinstance(key, bytes) else struct.pack('<I', key))
+
+    def set_factory_mode(self, mode):
+        """Set factory status (command 0x14)."""
+        return self.send(CMD_SET_FACTORY, bytes([mode]))
+
+    def disconnect_bt(self):
+        """Disconnect Bluetooth (command 0x2F)."""
+        return self.send(CMD_DISCONNECT_BT)
 
     # ── Bitmap printing ─────────────────────────────────────────
 

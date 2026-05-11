@@ -2,12 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2026-05-12
+
+### Added
+- All 48 protocol command codes exported as constants (`CMD_*`)
+- 16 new `get_*` methods: voltage, temperature, heat_density, power_down_time,
+  paper_type, max_gap, country, version, model, bt_mac, sn, board_version,
+  hw_info, factory_status
+- 5 new `set_*` methods: power_down_time, max_gap, crc_key, factory_mode
+- New methods: `feed_to_head()`, `print_default_para()`, `disconnect_bt()`
+- `_send_get()` helper for all GET commands (sends `struct.pack('<B', 1)`)
+
+### Fixed
+- `get_status()` and `get_battery()` now send required data byte
+
 ## [0.2.2] - 2026-05-12
 
 ### Fixed
 - `get_status()` and `get_battery()` now send required data byte `struct.pack('<B', 1)`
-
-
 All notable changes to this project will be documented in this file.
 
 ## [0.2.1] - 2026-05-11
