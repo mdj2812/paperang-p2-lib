@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.3] - 2026-05-12
+
+### Fixed
+- `_send_get()` now matches response frame by `cmd + 1` (e.g., GET_STATUS 0x0C → SENT_STATUS 0x0D)
+  instead of simply skipping the echo frame
+
 ## [0.3.2] - 2026-05-12
 
 ### Fixed
