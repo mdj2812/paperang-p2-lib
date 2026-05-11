@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.2] - 2026-05-12
+
+### Fixed
+- `unpack_response()` now parses multiple frames from a single USB response
+- `_send_get()` correctly finds the non-echo frame when printer sends command echo + data together
+- `read_response()` returns list of frame dicts (empty list on error)
+
 ## [0.3.1] - 2026-05-12
 
 ### Fixed
