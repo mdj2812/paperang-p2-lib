@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.2] - 2026-05-12
+
+### Fixed
+- `get_status()` and `get_battery()` now send required data byte `struct.pack('<B', 1)`
+
+
+All notable changes to this project will be documented in this file.
+
 ## [0.2.1] - 2026-05-11
 
 ### Changed
