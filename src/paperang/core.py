@@ -4,7 +4,6 @@ import usb.core
 import usb.util
 import struct
 import os
-import json
 from PIL import Image, ImageDraw, ImageFont
 
 from .constants import (
@@ -17,7 +16,6 @@ from .constants import (
     BUNDLED_FONTS_CJK,
 )
 from .protocol import (
-    crc32_paperang,
     pack_packet,
     unpack_response,
     CMD_PRINT_BITMAP,
