@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2026-05-11
+
+### Changed
+- Protocol code (CRC, packet pack/unpack, command codes) extracted into `protocol.py`
+- Profile management extracted into `profiles.py`
+- Added `unpack_response()` for parsing printer response frames
+- `constants.py` now only holds USB IDs, print params, defaults, and font paths
+- Tests updated to match new module structure; 4 new tests for `unpack_response()`
+
 ## [0.2.0] - 2026-05-08
 
 ### Added

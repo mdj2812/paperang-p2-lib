@@ -4,10 +4,15 @@ import os
 import pytest
 
 from paperang.constants import (
-    VENDOR_ID, PRODUCT_ID, CRC_SEED, PRINT_WIDTH, LINE_BYTES, MAX_PACKET_DATA,
+    VENDOR_ID, PRODUCT_ID, PRINT_WIDTH, LINE_BYTES,
     BUNDLED_FONTS_TEXT, BUNDLED_FONTS_PICKUP, BUNDLED_FONTS_CJK,
 )
-from paperang.core import PaperangP2, crc32_paperang, pack_packet
+from paperang.protocol import (
+    CRC_SEED, MAX_PACKET_DATA,
+    crc32_paperang, pack_packet, unpack_response,
+    FRAME_HEADER, FRAME_FOOTER,
+)
+from paperang.core import PaperangP2
 
 
 class TestConstants:
@@ -121,12 +126,39 @@ class TestCRCAndPacket:
         data = b"\x00\x01\x02"
         packet = pack_packet(cmd, data)
 
-        assert packet[0] == 0x02  # Header
-        assert packet[1] == cmd   # Command
-        assert packet[-1] == 0x03  # Footer
-        assert len(packet) > 5     # At least header + cmd + remain + data_len + footer
+        assert packet[0] == FRAME_HEADER  # Header
+        assert packet[1] == cmd            # Command
+        assert packet[-1] == FRAME_FOOTER  # Footer
+        assert len(packet) > 5             # At least header + cmd + remain + data_len + footer
 
     def test_pack_packet_with_remain(self):
         """Packet with packet_remain should encode correctly."""
         packet = pack_packet(0x00, b"test", 5)
         assert packet[2] == 5  # packet_remain
+
+
+class TestUnpackResponse:
+    """Test response frame parsing."""
+
+    def test_unpack_valid_frame(self):
+        """Should parse a well-formed response."""
+        data = b"\x01\x02\x03"
+        packet = pack_packet(0x0C, data)
+        result = unpack_response(packet)
+        assert result is not None
+        assert result['cmd'] == 0x0C
+        assert result['data'] == data
+
+    def test_unpack_too_short(self):
+        """Should return None for incomplete frames."""
+        assert unpack_response(b"\x02\x03") is None
+
+    def test_unpack_bad_footer(self):
+        """Should return None when footer is wrong."""
+        packet = bytearray(pack_packet(0x01, b"test"))
+        packet[-1] = 0xFF  # corrupt footer
+        assert unpack_response(packet) is None
+
+    def test_unpack_no_header(self):
+        """Should return None when header byte is missing."""
+        assert unpack_response(b"\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a") is None

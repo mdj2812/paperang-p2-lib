@@ -3,7 +3,6 @@
 import usb.core
 import usb.util
 import struct
-import zlib
 import os
 import json
 from PIL import Image, ImageDraw, ImageFont
@@ -11,43 +10,26 @@ from PIL import Image, ImageDraw, ImageFont
 from .constants import (
     VENDOR_ID,
     PRODUCT_ID,
-    CRC_SEED,
     PRINT_WIDTH,
     LINE_BYTES,
-    MAX_PACKET_DATA,
     BUNDLED_FONTS_TEXT,
     BUNDLED_FONTS_PICKUP,
     BUNDLED_FONTS_CJK,
 )
-
-
-def crc32_paperang(data, seed=CRC_SEED):
-    """Paperang-specific CRC32 calculation.
-
-    Uses seed = 0x35769521 (standard CRC32 uses 0x00000000).
-    """
-    crc = zlib.crc32(data, seed) & 0xFFFFFFFF
-    if crc > 2147483647:
-        crc -= 4294967296
-    return crc
-
-
-def pack_packet(cmd, data=b'', packet_remain=0):
-    """Pack Paperang protocol packet.
-
-    Format: [0x02] [CMD:1B] [packetRemain:1B] [dataLength:2B LE]
-            [DATA:0-1023B] [CRC32:4B LE] [0x03]
-    """
-    crc = crc32_paperang(data)
-    packet = bytearray()
-    packet.append(0x02)                           # Packet header
-    packet.append(cmd & 0xFF)                     # Command (1 byte)
-    packet.append(packet_remain & 0xFF)           # Remaining packets (1 byte)
-    packet.extend(struct.pack('<H', len(data)))   # Data length (2 bytes, LE)
-    packet.extend(data)                           # Data (0-1023 bytes)
-    packet.extend(struct.pack('<i', crc))         # CRC32 (4 bytes, LE, signed)
-    packet.append(0x03)                           # Packet footer
-    return bytes(packet)
+from .protocol import (
+    crc32_paperang,
+    pack_packet,
+    unpack_response,
+    CMD_PRINT_BITMAP,
+    CMD_GET_STATUS,
+    CMD_GET_BATTERY,
+    CMD_PRINT_TEST,
+    CMD_SET_HEAT,
+    CMD_FEED_PAPER,
+    CMD_SET_PAPER,
+    MAX_PACKET_DATA,
+)
+from .profiles import load_profiles, list_profiles
 
 
 class PaperangP2:
@@ -127,34 +109,7 @@ class PaperangP2:
         """Read and parse response from printer."""
         try:
             resp = self.dev.read(self.ep_in.bEndpointAddress, 64, timeout=timeout)
-            if len(resp) < 10:
-                return None
-
-            start_idx = 0
-            for i in range(len(resp)):
-                if resp[i] == 0x02:
-                    start_idx = i
-                    break
-
-            if start_idx + 10 > len(resp):
-                return None
-
-            cmd = resp[start_idx + 1]
-            packet_remain = resp[start_idx + 2]
-            data_len = struct.unpack('<H', resp[start_idx + 3:start_idx + 5])[0]
-
-            if start_idx + 5 + data_len + 4 + 1 > len(resp):
-                return None
-
-            data = bytes(resp[start_idx + 5:start_idx + 5 + data_len])
-            crc = struct.unpack('<I',
-                                resp[start_idx + 5 + data_len:start_idx + 5 + data_len + 4])[0]
-            end_byte = resp[start_idx + 5 + data_len + 4]
-
-            if end_byte != 0x03:
-                return None
-
-            return {'cmd': cmd, 'packet_remain': packet_remain, 'data': data, 'crc': crc}
+            return unpack_response(resp)
         except Exception:
             return None
 
@@ -162,24 +117,24 @@ class PaperangP2:
 
     def feed(self, lines=100):
         """Feed paper (command 0x1A)."""
-        return self.send(0x1A, struct.pack('<H', lines))
+        return self.send(CMD_FEED_PAPER, struct.pack('<H', lines))
 
     def set_heat_density(self, density=75):
         """Set heat density 0-100 (command 0x19)."""
         density = max(0, min(100, density))
-        return self.send(0x19, struct.pack('<H', density))
+        return self.send(CMD_SET_HEAT, struct.pack('<H', density))
 
     def set_paper_type(self, paper_type=0):
         """Set paper type (0=normal, 1=continuous)."""
-        return self.send(0x2C, bytes([paper_type]))
+        return self.send(CMD_SET_PAPER, bytes([paper_type]))
 
     def print_test_page(self):
         """Print test page."""
-        return self.send(0x1B)
+        return self.send(CMD_PRINT_TEST)
 
     def get_status(self):
         """Get printer status."""
-        self.send(0x0C)
+        self.send(CMD_GET_STATUS)
         resp = self.read_response()
         if resp:
             return resp['data'].hex() if resp['data'] else None
@@ -187,7 +142,7 @@ class PaperangP2:
 
     def get_battery(self):
         """Get battery level."""
-        self.send(0x10)
+        self.send(CMD_GET_BATTERY)
         resp = self.read_response()
         if resp and resp['data']:
             return resp['data'][0] if len(resp['data']) > 0 else None
@@ -216,7 +171,7 @@ class PaperangP2:
             remaining_packets = total_packets - packet_idx
 
             chunk = bitmap_data[offset:offset + current_bytes]
-            packet = pack_packet(0x00, chunk, remaining_packets)
+            packet = pack_packet(CMD_PRINT_BITMAP, chunk, remaining_packets)
             self.dev.write(self.ep_out.bEndpointAddress, packet)
 
             offset += current_bytes
@@ -454,30 +409,7 @@ class PaperangP2:
         return ImageFont.load_default()
 
 
-# ── Profile management ─────────────────────────────────────────
+# ── Re-export profile helpers for backward compatibility ─────────
 
-def load_profiles(profiles_path=None):
-    """Load print profiles from JSON file."""
-    if profiles_path and os.path.exists(profiles_path):
-        with open(profiles_path, 'r') as f:
-            return json.load(f)
+__all__ = ['PaperangP2', 'load_profiles', 'list_profiles']
 
-    # Fallback to bundled profiles
-    pkg_dir = os.path.dirname(os.path.abspath(__file__))
-    bundled = os.path.join(pkg_dir, 'profiles.json')
-    if os.path.exists(bundled):
-        with open(bundled, 'r') as f:
-            return json.load(f)
-    return {}
-
-
-def list_profiles(profiles_path=None):
-    """List available profiles."""
-    profiles = load_profiles(profiles_path)
-    print("Available profiles:")
-    for name, settings in profiles.items():
-        print(f"  {name}: {settings.get('description', 'No description')}")
-        print(f"    threshold={settings.get('threshold', 128)}, "
-              f"brightness={settings.get('brightness', 1.0)}, "
-              f"contrast={settings.get('contrast', 1.0)}, "
-              f"heat_density={settings.get('heat_density', 75)}")

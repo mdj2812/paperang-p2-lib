@@ -6,11 +6,9 @@ import os
 VENDOR_ID = 0x4348
 PRODUCT_ID = 0x5584
 
-# Protocol
-CRC_SEED = 0x35769521 & 0xFFFFFFFF
+# Physical print parameters
 PRINT_WIDTH = 576  # pixels (72 bytes/line * 8)
 LINE_BYTES = 72    # bytes per line
-MAX_PACKET_DATA = 1023  # max data bytes per packet
 
 # Paper types
 PAPER_TYPE_NORMAL = 0
