@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.1] - 2026-05-12
+
+### Fixed
+- `_send_get()` now correctly handles dual-response protocol: discards first
+  response (command echo) and returns data from second response (e.g., battery
+  level from CMD_SENT_BAT_STATUS = 0x11)
+
 ## [0.3.0] - 2026-05-12
 
 ### Added
@@ -20,15 +27,14 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 - `get_status()` and `get_battery()` now send required data byte `struct.pack('<B', 1)`
-All notable changes to this project will be documented in this file.
 
 ## [0.2.1] - 2026-05-11
 
 ### Changed
 - Module restructure: protocol, printer, printing, profiles separated from core
 - `protocol.py`: CRC, pack/unpack, command codes
-- `printer.py`: USB connection, low-level send/read, basic commands (`PaperangPrinter` class)
-- `printing.py`: image/text/QR/pickup rendering (`PaperangP2` extends `PaperangPrinter`)
+- `printer.py`: USB connection, low-level commands (`PaperangPrinter` class)
+- `printing.py`: image/text/QR rendering (`PaperangP2` extends `PaperangPrinter`)
 - `profiles.py`: print profile management
 - `constants.py` slimmed to USB IDs, print params, defaults, font paths
 - `core.py` now a thin compat re-export layer
