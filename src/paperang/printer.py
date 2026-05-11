@@ -112,7 +112,7 @@ class PaperangPrinter:
 
     def get_status(self):
         """Get printer status."""
-        self.send(CMD_GET_STATUS)
+        self.send(CMD_GET_STATUS, struct.pack('<B', 1))
         resp = self.read_response()
         if resp:
             return resp['data'].hex() if resp['data'] else None
@@ -120,7 +120,7 @@ class PaperangPrinter:
 
     def get_battery(self):
         """Get battery level."""
-        self.send(CMD_GET_BATTERY)
+        self.send(CMD_GET_BATTERY, struct.pack('<B', 1))
         resp = self.read_response()
         if resp and resp['data']:
             return resp['data'][0] if len(resp['data']) > 0 else None
