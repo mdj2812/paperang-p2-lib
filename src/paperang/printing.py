@@ -16,13 +16,16 @@ from .constants import (
     BUNDLED_FONTS_CJK,
 )
 from .printer import PaperangPrinter
+from .transport import Transport
 
 
 class PaperangP2(PaperangPrinter):
     """High-level Paperang P2 printer with image/text/QR support."""
 
-    def __init__(self, font_paths_text=None, font_paths_pickup=None, profiles_path=None):
-        super().__init__()
+    def __init__(self, transport: Transport | None = None,
+                 font_paths_text=None, font_paths_pickup=None,
+                 profiles_path=None):
+        super().__init__(transport)
         self.font_paths_text = font_paths_text
         self.font_paths_pickup = font_paths_pickup
         self.profiles_path = profiles_path
