@@ -42,7 +42,7 @@ jobs:
         run: python3 -m pip install pytest pytest-cov
 
       - name: Install package with extras
-        run: python3 -m pip install ".[qr]"
+        run: python3 -m pip install -e ".[qr]"
 
       - name: Run tests with coverage
         run: |
