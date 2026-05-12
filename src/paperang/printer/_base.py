@@ -6,7 +6,6 @@ Physical transport (USB, Bluetooth, …) is abstracted behind a Transport object
 
 import struct
 
-from ..constants import VENDOR_ID, PRODUCT_ID
 from ..protocol import (
     pack_packet,
     unpack_response,
