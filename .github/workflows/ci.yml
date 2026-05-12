@@ -46,9 +46,31 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          python3 -m pytest tests/ -v --cov=src/paperang --cov-report=term
-          python3 -m coverage xml -o coverage.xml
-          python3 -m coverage report --show-missing
+          python3 -m pytest tests/ -v --cov=src/paperang --cov-report=xml --cov-report=term
+
+      - name: Generate coverage badge JSON
+        run: |
+          python3 -c "
+          import xml.etree.ElementTree as ET, json
+          tree = ET.parse('coverage.xml')
+          rate = float(tree.getroot().attrib['line-rate'])
+          pct = int(rate * 100)
+          color = 'success' if pct >= 75 else ('yellow' if pct >= 50 else 'critical')
+          badge = {'schemaVersion': 1, 'label': 'coverage', 'message': f'{pct}%', 'color': color}
+          with open('coverage.json', 'w') as f:
+            json.dump(badge, f)
+          print(f'Coverage: {pct}%')
+          "
+          mkdir -p _badge && cp coverage.json _badge/
+
+      - name: Deploy badge to badges branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: _badge
+          publish_branch: badges
+          force_orphan: true
+          commit_message: "Update coverage badge"
 
       - name: Code Coverage Summary
         uses: irongut/CodeCoverageSummary@v1.3.0
