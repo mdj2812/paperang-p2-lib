@@ -66,7 +66,7 @@ from .protocol import (
     CMD_DISCONNECT_BT,
 )
 from .printer import PaperangPrinter, PaperangP2, load_profiles, list_profiles
-from .transport import Transport, UsbTransport
+from .transport import Transport
 
 __all__ = [
     # Constants
@@ -94,7 +94,7 @@ __all__ = [
     # Classes
     "PaperangPrinter", "PaperangP2",
     # Transport
-    "Transport", "UsbTransport",
+    "Transport",
     # Profiles
     "load_profiles", "list_profiles",
 ]
