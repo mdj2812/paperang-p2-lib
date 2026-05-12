@@ -3,7 +3,7 @@
 [![PyPI - Version](https://img.shields.io/pypi/v/paperang-p2-lib.svg?style=flat-square)](https://pypi.org/project/paperang-p2-lib/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/paperang-p2-lib.svg?style=flat-square)](https://pypi.org/project/paperang-p2-lib/)
 [![CI](https://github.com/mdj2812/paperang-p2-lib/actions/workflows/ci.yml/badge.svg)](https://github.com/mdj2812/paperang-p2-lib/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/mdj2812/paperang-p2-lib/branch/main/graph/badge.svg)](https://codecov.io/gh/mdj2812/paperang-p2-lib)
+[![coverage](https://raw.githubusercontent.com/mdj2812/paperang-p2-lib/badges/coverage.svg)](https://github.com/mdj2812/paperang-p2-lib/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 
 Python library for Paperang P2 thermal printer (USB protocol).
