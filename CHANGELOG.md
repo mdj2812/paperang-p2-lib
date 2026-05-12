@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.5] - 2026-05-12
+
+### Fixed
+- `get_version()` now detects binary firmware version data (e.g. `\x00\x01`)
+  and converts it to an integer string instead of decoding as UTF-8 garbage
+
+
 All notable changes to this project will be documented in this file.
 
 ## [0.3.4] - 2026-05-12

@@ -224,9 +224,23 @@ class PaperangPrinter:
     # ── GET version/hardware info ───────────────────────────────
 
     def get_version(self):
-        """Get firmware version (command 0x04). Returns string or None."""
+        """Get firmware version (command 0x04). Returns string or None.
+
+        If the response is printable ASCII (e.g. "1.2.3"), returns as-is.
+        If binary (e.g. b'\\x00\\x01'), converts to integer string.
+        """
         data = self._send_get(CMD_GET_VERSION)
-        return self._clean_str(data) if data else None
+        if not data:
+            return None
+        # If data contains only printable ASCII, decode normally
+        try:
+            text = data.decode('ascii').strip()
+            if text and all(32 <= ord(c) < 127 for c in text):
+                return text
+        except (UnicodeDecodeError, ValueError):
+            pass
+        # Binary version data — convert bytes to int
+        return str(int.from_bytes(data.rstrip(b'\x00'), 'big'))
 
     def get_model(self):
         """Get printer model (command 0x06). Returns string or None."""
