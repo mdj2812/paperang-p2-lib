@@ -31,8 +31,16 @@ class PaperangP2(PaperangPrinter):
 
     def print_image(self, image_path, heat_density=75, feed_before=50,
                     feed_after=300, threshold=128, brightness=1.0, contrast=1.0):
-        """Print an image file."""
-        img = Image.open(image_path)
+        """Print an image from a local file path or a remote URL."""
+        if isinstance(image_path, str) and image_path.startswith(('http://', 'https://')):
+            from io import BytesIO
+            from urllib.request import urlopen
+
+            with urlopen(image_path, timeout=15) as resp:
+                data = resp.read()
+            img = Image.open(BytesIO(data))
+        else:
+            img = Image.open(image_path)
 
         if img.width != PRINT_WIDTH:
             ratio = PRINT_WIDTH / img.width

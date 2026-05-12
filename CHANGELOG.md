@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.6] - 2026-05-12
+
+### Fixed
+- `print_image()` now supports remote URLs (http/https) by downloading them
+  before opening, in addition to local file paths
+
+
 ## [0.3.5] - 2026-05-12
 
 ### Fixed
