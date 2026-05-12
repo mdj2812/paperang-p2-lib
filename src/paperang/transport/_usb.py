@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+from ..constants import VENDOR_ID, PRODUCT_ID
 from ._base import Transport
 
 
 class UsbTransport(Transport):
     """USB transport for Paperang P2 (vendor-specific VID/PID)."""
 
-    def __init__(self, vid: int = 0x4348, pid: int = 0x5584) -> None:
+    def __init__(self, vid: int = VENDOR_ID, pid: int = PRODUCT_ID) -> None:
         """Initialize USB transport with vendor/product IDs.
 
         Args:
