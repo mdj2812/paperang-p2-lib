@@ -75,7 +75,7 @@ class PaperangP2(PaperangPrinter):
 
     def _resolve_font_paths(self, font_list):
         """Resolve font paths. Handles both absolute paths and relative-to-package paths."""
-        base_dir = os.path.dirname(os.path.abspath(__file__))
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         resolved = []
         for f in font_list:
             if os.path.isabs(f):
