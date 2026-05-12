@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.4] - 2026-05-12
+
+### Fixed
+- String decoding helpers (`get_version`, `get_model`, `get_sn`, `get_board_version`)
+  now strip NUL bytes and whitespace before decoding, preventing "\ufffd"
+  replacement-character garbage in firmwware version/model/serial strings
+- Added `_clean_str()` static method for consistent bytes→string cleanup
+
 ## [0.3.3] - 2026-05-12
 
 ### Fixed

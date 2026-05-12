@@ -209,17 +209,29 @@ class PaperangPrinter:
         data = self._send_get(CMD_GET_COUNTRY)
         return data.decode('utf-8', errors='replace') if data else None
 
+    # ── Internal helpers ────────────────────────────────────────
+
+    @staticmethod
+    def _clean_str(data: bytes) -> str:
+        """Decode printer response bytes to a clean string.
+
+        Strips NUL bytes and replaces non-printable / non-UTF8 sequences.
+        """
+        # Strip leading/trailing NULs, then decode with replacement
+        cleaned = data.rstrip(b'\x00')
+        return cleaned.decode('utf-8', errors='replace').strip()
+
     # ── GET version/hardware info ───────────────────────────────
 
     def get_version(self):
         """Get firmware version (command 0x04). Returns string or None."""
         data = self._send_get(CMD_GET_VERSION)
-        return data.decode('utf-8', errors='replace') if data else None
+        return self._clean_str(data) if data else None
 
     def get_model(self):
         """Get printer model (command 0x06). Returns string or None."""
         data = self._send_get(CMD_GET_MODEL)
-        return data.decode('utf-8', errors='replace') if data else None
+        return self._clean_str(data) if data else None
 
     def get_bt_mac(self):
         """Get Bluetooth MAC address (command 0x08). Returns hex string or None."""
@@ -229,12 +241,12 @@ class PaperangPrinter:
     def get_sn(self):
         """Get serial number (command 0x0A). Returns string or None."""
         data = self._send_get(CMD_GET_SN)
-        return data.decode('utf-8', errors='replace') if data else None
+        return self._clean_str(data) if data else None
 
     def get_board_version(self):
         """Get board version (command 0x23). Returns string or None."""
         data = self._send_get(CMD_GET_BOARD_VERSION)
-        return data.decode('utf-8', errors='replace') if data else None
+        return self._clean_str(data) if data else None
 
     def get_hw_info(self):
         """Get hardware info (command 0x25). Returns hex string or None."""
