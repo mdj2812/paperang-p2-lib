@@ -8,21 +8,24 @@ import os
 import random
 from PIL import Image, ImageDraw, ImageFont
 
-from .constants import (
+from ..constants import (
     PRINT_WIDTH,
     LINE_BYTES,
     BUNDLED_FONTS_TEXT,
     BUNDLED_FONTS_PICKUP,
     BUNDLED_FONTS_CJK,
 )
-from .printer import PaperangPrinter
+from ._base import PaperangPrinter
+from ..transport import Transport
 
 
 class PaperangP2(PaperangPrinter):
     """High-level Paperang P2 printer with image/text/QR support."""
 
-    def __init__(self, font_paths_text=None, font_paths_pickup=None, profiles_path=None):
-        super().__init__()
+    def __init__(self, transport: Transport | None = None,
+                 font_paths_text=None, font_paths_pickup=None,
+                 profiles_path=None):
+        super().__init__(transport)
         self.font_paths_text = font_paths_text
         self.font_paths_pickup = font_paths_pickup
         self.profiles_path = profiles_path
@@ -72,7 +75,7 @@ class PaperangP2(PaperangPrinter):
 
     def _resolve_font_paths(self, font_list):
         """Resolve font paths. Handles both absolute paths and relative-to-package paths."""
-        base_dir = os.path.dirname(os.path.abspath(__file__))
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         resolved = []
         for f in font_list:
             if os.path.isabs(f):

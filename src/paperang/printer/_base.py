@@ -1,14 +1,12 @@
-"""Paperang P2 USB Printer — low-level communication layer.
+"""Paperang P2 Printer — low-level communication layer.
 
-Handles USB connection, packet send/receive, and basic printer commands.
+Handles protocol-level packet send/receive and basic printer commands.
+Physical transport (USB, Bluetooth, …) is abstracted behind a Transport object.
 """
 
 import struct
-import usb.core
-import usb.util
 
-from .constants import VENDOR_ID, PRODUCT_ID
-from .protocol import (
+from ..protocol import (
     pack_packet,
     unpack_response,
     CMD_PRINT_BITMAP,
@@ -41,52 +39,41 @@ from .protocol import (
     CMD_DISCONNECT_BT,
     MAX_PACKET_DATA,
 )
+from ..transport import Transport, UsbTransport
 
 # All "get" commands require a single data byte
 _GET_DATA = struct.pack('<B', 1)
 
 
 class PaperangPrinter:
-    """Low-level Paperang P2 USB printer interface."""
+    """Low-level Paperang P2 printer interface.
 
-    def __init__(self):
-        self.dev = None
-        self.ep_out = None
-        self.ep_in = None
+    Sits above a :class:`~paperang.transport.Transport` and provides
+    command-level send / receive including packet framing and CRC.
+
+    Args:
+        transport: Physical transport.  Defaults to USB if not given.
+    """
+
+    def __init__(self, transport: Transport | None = None):
+        self._transport = transport if transport is not None else UsbTransport()
 
     # ── Connection ──────────────────────────────────────────────
 
     def connect(self):
-        """Connect to printer via USB."""
-        self.dev = usb.core.find(idVendor=VENDOR_ID, idProduct=PRODUCT_ID)
-        if self.dev is None:
-            raise RuntimeError("Paperang P2 printer not found")
+        """Connect to the printer via the underlying transport."""
+        return self._transport.connect()
 
-        if self.dev.is_kernel_driver_active(0):
-            self.dev.detach_kernel_driver(0)
-
-        self.dev.set_configuration()
-        cfg = self.dev.get_active_configuration()
-        intf = cfg[(0, 0)]
-
-        self.ep_out = usb.util.find_descriptor(
-            intf,
-            custom_match=lambda e:
-                usb.util.endpoint_direction(e.bEndpointAddress) == usb.util.ENDPOINT_OUT
-        )
-        self.ep_in = usb.util.find_descriptor(
-            intf,
-            custom_match=lambda e:
-                usb.util.endpoint_direction(e.bEndpointAddress) == usb.util.ENDPOINT_IN
-        )
-        return True
+    def disconnect(self):
+        """Disconnect and release transport resources."""
+        self._transport.disconnect()
 
     # ── Low-level communication ─────────────────────────────────
 
     def send(self, cmd, data=b''):
         """Send a single command packet."""
         packet = pack_packet(cmd, data)
-        self.dev.write(self.ep_out.bEndpointAddress, packet)
+        self._transport.send(packet)
         return True
 
     def send_multi_packet(self, cmd, data):
@@ -98,11 +85,14 @@ class PaperangPrinter:
             remaining = total_len - offset
             chunk_len = min(MAX_PACKET_DATA, remaining)
             next_offset = offset + chunk_len
-            packets_remain = (total_len - next_offset + MAX_PACKET_DATA - 1) // MAX_PACKET_DATA
+            packets_remain = (
+                (total_len - next_offset + MAX_PACKET_DATA - 1)
+                // MAX_PACKET_DATA
+            )
 
             chunk = data[offset:next_offset]
             packet = pack_packet(cmd, chunk, packets_remain)
-            self.dev.write(self.ep_out.bEndpointAddress, packet)
+            self._transport.send(packet)
             offset = next_offset
 
         return True
@@ -113,20 +103,11 @@ class PaperangPrinter:
         Returns list of frame dicts. Each dict has ``cmd``, ``packet_remain``,
         ``data``, ``crc``. Returns empty list on error.
         """
-        try:
-            resp = self.dev.read(self.ep_in.bEndpointAddress, 64, timeout=timeout)
-            return unpack_response(resp)
-        except Exception:
-            return []
+        raw = self._transport.recv(timeout=timeout)
+        return unpack_response(raw) if raw else []
 
     def _send_get(self, cmd):
-        """Helper: send a GET command and return response data.
-
-        GET commands receive multiple frames in one response:
-        - Echo of the original command (same cmd)
-        - Actual data with response code = cmd + 1
-        We iterate all frames and find the one matching cmd + 1.
-        """
+        """Helper: send a GET command and return response data."""
         self.send(cmd, _GET_DATA)
         frames = self.read_response()
         expected_resp = cmd + 1
@@ -213,11 +194,7 @@ class PaperangPrinter:
 
     @staticmethod
     def _clean_str(data: bytes) -> str:
-        """Decode printer response bytes to a clean string.
-
-        Strips NUL bytes and replaces non-printable / non-UTF8 sequences.
-        """
-        # Strip leading/trailing NULs, then decode with replacement
+        """Decode printer response bytes to a clean string."""
         cleaned = data.rstrip(b'\x00')
         return cleaned.decode('utf-8', errors='replace').strip()
 
@@ -232,14 +209,12 @@ class PaperangPrinter:
         data = self._send_get(CMD_GET_VERSION)
         if not data:
             return None
-        # If data contains only printable ASCII, decode normally
         try:
             text = data.decode('ascii').strip()
             if text and all(32 <= ord(c) < 127 for c in text):
                 return text
         except (UnicodeDecodeError, ValueError):
             pass
-        # Binary version data — convert bytes to int
         return str(int.from_bytes(data.rstrip(b'\x00'), 'big'))
 
     def get_model(self):
@@ -284,7 +259,10 @@ class PaperangPrinter:
 
     def set_crc_key(self, key):
         """Set CRC key (command 0x18). Key should be 4 bytes."""
-        return self.send(CMD_SET_CRC_KEY, key if isinstance(key, bytes) else struct.pack('<I', key))
+        return self.send(
+            CMD_SET_CRC_KEY,
+            key if isinstance(key, bytes) else struct.pack('<I', key),
+        )
 
     def set_factory_mode(self, mode):
         """Set factory status (command 0x14)."""
@@ -298,7 +276,7 @@ class PaperangPrinter:
 
     def print_bitmap(self, bitmap_data, width_bytes=72):
         """Print raw bitmap data (row-based, 14 lines per packet)."""
-        lines_per_packet = MAX_PACKET_DATA // width_bytes  # 14
+        lines_per_packet = MAX_PACKET_DATA // width_bytes
 
         total_bytes = len(bitmap_data)
         total_lines = total_bytes // width_bytes
@@ -318,7 +296,7 @@ class PaperangPrinter:
 
             chunk = bitmap_data[offset:offset + current_bytes]
             packet = pack_packet(CMD_PRINT_BITMAP, chunk, remaining_packets)
-            self.dev.write(self.ep_out.bEndpointAddress, packet)
+            self._transport.send(packet)
 
             offset += current_bytes
             line_offset += current_lines
