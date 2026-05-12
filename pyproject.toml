@@ -37,3 +37,17 @@ paperang = [
     "profiles.json",
     "fonts/latin/*.ttf",
 ]
+
+[tool.coverage.run]
+source = ["src/paperang"]
+relative_files = true
+
+[tool.coverage.report]
+exclude_also = [
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+
+[tool.pytest.ini_options]
+addopts = "--cov=src/paperang --cov-report=term --cov-report=xml"

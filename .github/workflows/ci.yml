@@ -39,13 +39,20 @@ jobs:
           python-version: "3.11"
 
       - name: Install test dependencies
-        run: python3 -m pip install pytest
+        run: python3 -m pip install pytest pytest-cov
 
       - name: Install package with extras
         run: python3 -m pip install ".[qr]"
 
-      - name: Run tests
-        run: python3 -m pytest tests/ -v
+      - name: Run tests with coverage
+        run: python3 -m pytest tests/ -v --cov=src/paperang --cov-report=xml
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.xml
+          fail_ci_if_error: false
 
       - name: Import test
         run: python3 -c "from paperang import PaperangP2; print('Import OK')"
