@@ -8,15 +8,15 @@ import os
 import random
 from PIL import Image, ImageDraw, ImageFont
 
-from .constants import (
+from ..constants import (
     PRINT_WIDTH,
     LINE_BYTES,
     BUNDLED_FONTS_TEXT,
     BUNDLED_FONTS_PICKUP,
     BUNDLED_FONTS_CJK,
 )
-from .printer import PaperangPrinter
-from .transport import Transport
+from ._base import PaperangPrinter
+from ..transport import Transport
 
 
 class PaperangP2(PaperangPrinter):

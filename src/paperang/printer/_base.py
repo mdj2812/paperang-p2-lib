@@ -6,8 +6,8 @@ Physical transport (USB, Bluetooth, …) is abstracted behind a Transport object
 
 import struct
 
-from .constants import VENDOR_ID, PRODUCT_ID
-from .protocol import (
+from ..constants import VENDOR_ID, PRODUCT_ID
+from ..protocol import (
     pack_packet,
     unpack_response,
     CMD_PRINT_BITMAP,
@@ -40,7 +40,7 @@ from .protocol import (
     CMD_DISCONNECT_BT,
     MAX_PACKET_DATA,
 )
-from .transport import Transport, UsbTransport
+from ..transport import Transport, UsbTransport
 
 # All "get" commands require a single data byte
 _GET_DATA = struct.pack('<B', 1)

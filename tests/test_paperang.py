@@ -12,8 +12,7 @@ from paperang.protocol import (
     crc32_paperang, pack_packet, unpack_response,
     FRAME_HEADER, FRAME_FOOTER,
 )
-from paperang.printer import PaperangPrinter
-from paperang.printing import PaperangP2
+from paperang.printer import PaperangPrinter, PaperangP2
 
 
 class TestConstants:

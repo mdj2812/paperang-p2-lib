@@ -65,10 +65,8 @@ from .protocol import (
     CMD_PRINT_DEFAULT_PARA,
     CMD_DISCONNECT_BT,
 )
-from .printer import PaperangPrinter
-from .printing import PaperangP2
+from .printer import PaperangPrinter, PaperangP2, load_profiles, list_profiles
 from .transport import Transport, UsbTransport
-from .profiles import load_profiles, list_profiles
 
 __all__ = [
     # Constants
