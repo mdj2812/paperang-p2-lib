@@ -50,4 +50,4 @@ exclude_also = [
 ]
 
 [tool.pytest.ini_options]
-addopts = "--cov=src/paperang --cov-report=term --cov-report=xml"
+testpaths = ["tests"]
