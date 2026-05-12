@@ -46,9 +46,9 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          python3 -m pytest tests/ -v --cov=src/paperang --cov-report=xml:coverage.xml --cov-report=term
-          echo "=== coverage.xml head ==="
-          head -30 coverage.xml
+          python3 -m pytest tests/ -v --cov=src/paperang --cov-report=term
+          python3 -m coverage xml -o coverage.xml
+          python3 -m coverage report --show-missing
 
       - name: Code Coverage Summary
         uses: irongut/CodeCoverageSummary@v1.3.0
