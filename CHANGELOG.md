@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.4.0rc1] - 2026-05-13
+## [0.4.0rc1] - 2026-05-13
 
 ### Added
 - `BleTransport` — Bluetooth Low Energy transport via Nordic UART Service (NUS)
