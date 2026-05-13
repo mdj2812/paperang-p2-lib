@@ -6,13 +6,13 @@
 [![coverage](https://raw.githubusercontent.com/mdj2812/paperang-p2-lib/badges/coverage.svg)](https://github.com/mdj2812/paperang-p2-lib/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 
-Python library for Paperang P2 thermal printer (USB protocol).
+Python library for Paperang P2 thermal printer (USB + Bluetooth BLE).
 
 Based on [hurui200320/java-paperang-p2-usb](https://github.com/hurui200320/java-paperang-p2-usb) protocol.
 
 ## Features
 
-- USB connection to Paperang P2 printer
+- USB and Bluetooth BLE connection to Paperang P2 printer
 - Text printing (CJK support via optional `[cjk]` extra)
 - Image printing with adjustable brightness/contrast/threshold
 - QR code generation and printing
@@ -25,7 +25,7 @@ Based on [hurui200320/java-paperang-p2-usb](https://github.com/hurui200320/java-
 ## Installation
 
 ```bash
-# Basic (Latin fonts only)
+# Basic (Latin fonts only, USB only)
 pip install paperang-p2-lib
 
 # With QR code support
@@ -34,11 +34,16 @@ pip install paperang-p2-lib[qr]
 # With CJK (Chinese/Japanese/Korean) text support
 pip install paperang-p2-lib[cjk]
 
+# With Bluetooth BLE support
+pip install paperang-p2-lib[ble]
+
 # All extras
-pip install paperang-p2-lib[qr,cjk]
+pip install paperang-p2-lib[qr,cjk,ble]
 ```
 
 ## Usage
+
+### USB
 
 ```python
 from paperang import PaperangP2
@@ -70,7 +75,38 @@ version = printer.get_version()
 model   = printer.get_model()
 ```
 
+### Bluetooth BLE
+
+```python
+from paperang.transport import BleTransport
+from paperang import PaperangP2
+
+ble = BleTransport()                    # auto-scan for Paperang device
+# ble = BleTransport(address="AA:BB:CC:DD:EE:FF")  # or specify MAC
+
+printer = PaperangP2(transport=ble)
+printer.connect()
+
+# All print methods work the same way
+printer.print_text("Hello from BLE!")
+printer.get_battery()
+```
+
+#### Scan for nearby BLE devices
+
+```bash
+python -m tools.ble_scan
+```
+
 ## API Reference
+
+### Transport Classes
+
+| Class | Description |
+|-------|-------------|
+| `Transport` (ABC) | Abstract transport interface |
+| `UsbTransport` | USB transport (default when no transport is passed) |
+| `BleTransport` | Bluetooth BLE transport (requires `[ble]` extra) |
 
 ### `PaperangP2` Class (high-level)
 
@@ -78,7 +114,7 @@ Inherits from `PaperangPrinter`. Adds image/text/QR rendering on top of low-leve
 
 | Method | Description |
 |--------|-------------|
-| `connect()` | Connect to printer via USB |
+| `connect()` | Connect to printer (default: USB; pass `transport=BleTransport()` for BLE) |
 | `print_text(text, font_size, heat_density)` | Print text (CJK requires `[cjk]` extra) |
 | `print_image(path, heat_density, feed_before, feed_after, threshold, brightness, contrast)` | Print image |
 | `print_qr(content, box_size, heat_density, max_width)` | Print QR code |
@@ -132,11 +168,17 @@ Inherits from `PaperangPrinter`. Adds image/text/QR rendering on top of low-leve
 
 ```
 paperang/
-├── protocol.py    — CRC, pack/unpack, 48 command constants (CMD_*)
-├── printer.py     — PaperangPrinter: USB + low-level commands
-├── printing.py    — PaperangP2: high-level print functions
-├── profiles.py    — load_profiles(), list_profiles()
-└── constants.py   — USB IDs, dimensions, defaults, font paths
+├── transport/          — Physical layer abstraction
+│   ├── _base.py        — Transport ABC
+│   ├── _usb.py         — UsbTransport (USB HID)
+│   └── _ble.py         — BleTransport (Bluetooth BLE)
+├── protocol/           — CRC, pack/unpack, 48 command constants (CMD_*)
+├── printer/            — Printer / application layer
+│   ├── _base.py        — PaperangPrinter (low-level commands)
+│   ├── _printing.py    — PaperangP2 (high-level: image/text/QR rendering)
+│   └── profiles.py     — load_profiles(), list_profiles()
+├── constants.py        — USB IDs, dimensions, defaults, font paths
+└── core.py             — Compatibility re-exports
 ```
 
 ### Utility Functions
@@ -223,6 +265,16 @@ will render as boxes or missing glyph symbols.
 ### CRC32
 
 Custom seed `0x35769521` (standard CRC32 uses `0x00000000`).
+
+### Dependencies
+
+| Extra | Package | Purpose |
+|-------|---------|---------|
+| (always) | `pyusb>=1.2.1` | USB HID communication |
+| (always) | `Pillow>=10.0.0` | Image processing |
+| `[qr]` | `qrcode[pil]>=7.4.2` | QR code generation |
+| `[cjk]` | `paperang-p2-fonts-cjk>=0.1.0` | CJK font (文泉驿微米黑) |
+| `[ble]` | `bleak>=0.22.0` | Bluetooth BLE (cross-platform) |
 
 ## Related Projects
 

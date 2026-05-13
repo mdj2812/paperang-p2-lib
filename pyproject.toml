@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "paperang-p2-lib"
-version = "0.3.7"
+version = "0.4.0rc1"
 description = "Python library for Paperang P2 thermal printer (USB protocol)"
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -28,6 +28,7 @@ classifiers = [
 [project.optional-dependencies]
 qr = ["qrcode[pil]>=7.4.2"]
 cjk = ["paperang-p2-fonts-cjk>=0.1.0"]
+ble = ["bleak>=0.22.0"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

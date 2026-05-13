@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.4.0rc1] - 2026-05-13
+
+### Added
+- `BleTransport` — Bluetooth Low Energy transport via Nordic UART Service (NUS)
+- Optional `[ble]` extra (`bleak>=0.22.0`) for cross-platform BLE support
+- `tools/ble_scan.py` — CLI BLE device scanner
+- BLE device auto-discovery: scans for `Paperang` and `MiaoMiaoJi` (喵喵机) names
+- NUS UUID constants (`NUS_SERVICE_UUID`, `NUS_TX_UUID`, `NUS_RX_UUID`) in `constants.py`
+- 22 mock-based BLE transport tests (constructor, send/recv, connect, callbacks)
+
 ## [0.3.7] - 2026-05-13
 
 ### Changed
