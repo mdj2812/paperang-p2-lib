@@ -26,8 +26,9 @@ class BleTransport(Transport):
 
     Args:
         address: BLE MAC address of the printer. If not provided,
-            ``name`` is used for scanning.
+            scans for nearby devices matching any ``PAPERANG_NAMES``.
         name: Device name prefix to scan for.  Default ``"Paperang"``.
+            Also matches ``"MiaoMiaoJi"`` (喵喵机).
         service_uuid: Override the UART service UUID.
         tx_uuid: Override the TX (write) characteristic UUID.
         rx_uuid: Override the RX (notify) characteristic UUID.
@@ -122,10 +123,12 @@ class BleTransport(Transport):
                     f"Paperang P2 not found at {self.address}"
                 )
         else:
-            # Scan by name prefix
+            # Scan by name prefix — supports "Paperang" and "MiaoMiaoJi"
+            names = {self.name.lower(), "miaomiaoji"}
             device = await BleakScanner.find_device_by_filter(
                 lambda d, ad: bool(
-                    d.name and d.name.lower().startswith(self.name.lower())
+                    d.name
+                    and any(d.name.lower().startswith(n) for n in names)
                 ),
                 timeout=10,
             )
