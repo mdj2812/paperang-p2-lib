@@ -11,11 +11,7 @@ from __future__ import annotations
 import asyncio
 
 from ._base import Transport
-
-# Nordic UART Service — used by many BLE peripherals including Paperang P2
-NUS_SERVICE_UUID = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
-NUS_TX_UUID = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"       # write (phone→printer)
-NUS_RX_UUID = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"       # notify (printer→phone)
+from ..constants import NUS_SERVICE_UUID, NUS_TX_UUID, NUS_RX_UUID
 
 
 class BleTransport(Transport):

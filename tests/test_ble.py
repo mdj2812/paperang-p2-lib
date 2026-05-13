@@ -10,8 +10,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from paperang.transport._ble import BleTransport, NUS_SERVICE_UUID, NUS_TX_UUID, NUS_RX_UUID
+from paperang.transport._ble import BleTransport
 from paperang.transport import Transport
+from paperang.constants import NUS_SERVICE_UUID, NUS_TX_UUID, NUS_RX_UUID
 
 
 # ── Fake bleak objects (stand-ins when bleak not installed) ──────────
