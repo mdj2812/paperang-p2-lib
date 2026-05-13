@@ -10,6 +10,22 @@
 - NUS UUID constants (`NUS_SERVICE_UUID`, `NUS_TX_UUID`, `NUS_RX_UUID`) in `constants.py`
 - 22 mock-based BLE transport tests (constructor, send/recv, connect, callbacks)
 
+## [0.3.7] - 2026-05-13
+
+### Changed
+- Refactored physical transport layer behind `Transport` abstract base class;
+  `UsbTransport` moved to `_usb.py` for cleaner separation
+- Reorganized package into `transport/` / `protocol/` / `printer/` subpackages
+  (internal structure only; public API unchanged)
+- Migrated printer module files: `printer.py` → `printer/_base.py`,
+  `printing.py` → `printer/_printing.py`
+
+### Added
+- CI test coverage reporting with 85% minimum threshold
+- GitHub-native coverage badge via shields.io
+- 70+ mock-based tests for printer layer, USB transport, and profiles
+- Tests split into transport / protocol / printer layers
+
 ## [0.3.6] - 2026-05-12
 
 ### Fixed
