@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import asyncio
 
-from ..constants import VENDOR_ID
 from ._base import Transport
 
 # Nordic UART Service — used by many BLE peripherals including Paperang P2
