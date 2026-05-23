@@ -192,7 +192,14 @@ class PaperangPrinter:
     def get_heat_density(self):
         """Get current heat density (command 0x1C). Returns int or None."""
         data = self._send_get(CMD_GET_HEAT)
-        return struct.unpack('<H', data)[0] if data and len(data) >= 2 else None
+        if not data:
+            return None
+        # Device may return 1 byte (0-255) or 2 bytes LE (uint16)
+        if len(data) >= 2:
+            return struct.unpack('<H', data[:2])[0]
+        if len(data) == 1:
+            return data[0]
+        return None
 
     def get_power_down_time(self):
         """Get auto power-down time in seconds (command 0x1F). Returns int or None."""
