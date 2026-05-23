@@ -106,14 +106,38 @@ class PaperangPrinter:
         raw = self._transport.recv(timeout=timeout)
         return unpack_response(raw) if raw else []
 
-    def _send_get(self, cmd):
-        """Helper: send a GET command and return response data."""
+    def _drain(self, timeout=50):
+        """Drain stale data from the IN endpoint so the next read is fresh."""
+        try:
+            while True:
+                chunk = self._transport.recv(timeout=timeout)
+                if not chunk:
+                    break
+        except Exception:
+            pass
+
+    def _send_get(self, cmd, retries=3):
+        """Helper: send a GET command and return response data.
+
+        The Paperang P2 may buffer or delay responses, so we read
+        repeatedly with short waits until the expected response frame
+        appears.
+
+        Args:
+            cmd: Command code to send.
+            retries: Max read attempts after sending.
+        """
         self.send(cmd, _GET_DATA)
-        frames = self.read_response()
         expected_resp = cmd + 1
-        for frame in frames:
-            if frame['cmd'] == expected_resp:
-                return frame['data']
+
+        import time
+        for _ in range(retries):
+            time.sleep(0.1)
+            frames = self.read_response(timeout=1000)
+            for frame in frames:
+                if frame['cmd'] == expected_resp:
+                    return frame['data']
+
         return None
 
     # ── Printer controls ────────────────────────────────────────
