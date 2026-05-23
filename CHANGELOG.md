@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.8] - 2026-05-23
+
+### Fixed
+- `get_heat_density()` now handles single-byte P2 responses (device returns
+  1 byte, 0-100, not 2 bytes LE)
+- `_send_get()` retries reads up to 3 times with 100 ms delay to handle
+  P2 buffered/stale response frames
+
+### Added
+- `_drain()` utility method for clearing stale data from the USB IN endpoint
+
 ## [0.4.0rc1] - 2026-05-13
 
 ### Added
