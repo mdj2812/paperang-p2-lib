@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.3.8] - 2026-05-23
+## [0.4.0rc2] - 2026-05-23
 
 ### Fixed
 - `get_heat_density()` now handles single-byte P2 responses (device returns
