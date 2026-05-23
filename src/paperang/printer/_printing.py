@@ -162,23 +162,43 @@ class PaperangP2(PaperangPrinter):
         canvas.save(tmp_path)
         return self.print_image(tmp_path, heat_density=heat_density)
 
-    def print_pickup_code(self, code, heat_density=100):
-        """Print a pickup code in large bold style (96px, centered)."""
+    def print_pickup_code(self, code, heat_density=100, compact=True):
+        """Print one or more pickup codes in large bold style (96px, centered).
+
+        Args:
+            code: Single code string, or list of code strings for
+                  multiple codes on one printout.
+            heat_density: Heat density 0-100 (default 100 for thermal paper).
+            compact: Use tighter vertical spacing between multiple codes
+                     (default True, ~30px gap; False uses ~60px gap).
+        """
+        codes = [code] if isinstance(code, str) else list(code)
         font_paths = self.font_paths_pickup or self._resolve_font_paths(BUNDLED_FONTS_PICKUP)
         font = self._load_font(font_paths, 96)
 
-        bbox = font.getbbox(code)
-        text_width = bbox[2] - bbox[0] if bbox else 400
-        text_height = bbox[3] - bbox[0] if bbox else 120
+        # Measure the widest code for centering
+        max_width = 0
+        code_heights = []
+        for c in codes:
+            bbox = font.getbbox(c)
+            w = bbox[2] - bbox[0] if bbox else 400
+            h = bbox[3] - bbox[1] if bbox else 120
+            max_width = max(max_width, w)
+            code_heights.append(h)
 
         canvas_width = PRINT_WIDTH
-        canvas_height = ((text_height + 60 + 7) // 8) * 8
+        line_spacing = 30 if compact else 60
+        total_height = sum(code_heights) + len(codes) * line_spacing + 40
+        canvas_height = ((total_height + 7) // 8) * 8
         canvas = Image.new('1', (canvas_width, canvas_height), 1)
         draw = ImageDraw.Draw(canvas)
 
-        x = (canvas_width - text_width) // 2
-        y = 20
-        draw.text((x, y), code, font=font, fill=0)
+        for i, c in enumerate(codes):
+            bbox = font.getbbox(c)
+            text_width = bbox[2] - bbox[0] if bbox else 400
+            x = (canvas_width - text_width) // 2
+            y = 20 + i * (code_heights[i] + line_spacing)
+            draw.text((x, y), c, font=font, fill=0)
 
         tmp_path = '/tmp/paperang_pickup_code.png'
         canvas.save(tmp_path)
