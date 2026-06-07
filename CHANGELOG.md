@@ -1,6 +1,11 @@
 # Changelog
 
-## [0.4.0rc2] - 2026-05-23
+## [1.0.0] - 2026-06-07
+
+### Changed
+- **Stable release** — promoted from Alpha to Production/Stable
+- BLE `recv()` upgraded from polling loop to `asyncio.Queue` for proper
+  non-busy-wait RX handling
 
 ### Fixed
 - `get_heat_density()` now handles single-byte P2 responses (device returns

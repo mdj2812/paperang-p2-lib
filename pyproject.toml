@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "paperang-p2-lib"
-version = "0.4.0rc3"
+version = "1.0.0"
 description = "Python library for Paperang P2 thermal printer (USB protocol)"
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -14,7 +14,7 @@ dependencies = [
     "Pillow>=10.0.0",
 ]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
