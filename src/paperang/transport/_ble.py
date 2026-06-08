@@ -132,11 +132,26 @@ class BleTransport(Transport):
                     f"Paperang P2 not found (name prefix: {self.name})"
                 )
 
-        # Stage 2 — connect
-        self._client = BleakClient(
-            device, timeout=self.timeout, disconnected_callback=self._on_disconnect
-        )
-        await self._client.connect()
+        # Stage 2 — connect (with retry-connector when available, e.g. in HA)
+        try:
+            from bleak_retry_connector import (  # type: ignore[import-untyped]
+                establish_connection,
+            )
+
+            self._client = await establish_connection(
+                BleakClient,
+                device,
+                device.name,
+                disconnected_callback=self._on_disconnect,
+                max_attempts=3,
+            )
+        except ImportError:
+            self._client = BleakClient(
+                device,
+                timeout=self.timeout,
+                disconnected_callback=self._on_disconnect,
+            )
+            await self._client.connect()
 
         # Stage 3 — discover characteristics
         await self._client.start_notify(
