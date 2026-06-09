@@ -28,7 +28,6 @@ classifiers = [
 [project.optional-dependencies]
 qr = ["qrcode[pil]>=7.4.2"]
 cjk = ["paperang-p2-fonts-cjk>=0.1.0"]
-ble = ["bleak>=0.22.0"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
