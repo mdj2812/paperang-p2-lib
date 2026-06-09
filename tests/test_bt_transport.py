@@ -52,7 +52,7 @@ class TestBtTransportBasics:
 class TestScanDevices:
     """Tests for device scanning via bluetoothctl."""
 
-    @patch("subprocess.run")
+    @patch("paperang.transport._bt.subprocess.run")
     def test_scan_finds_paperang(self, mock_run):
         mock_proc = MagicMock()
         mock_proc.stdout = "[NEW] Device 00:15:83:EB:05:17 Paperang_P2\n"
@@ -64,7 +64,7 @@ class TestScanDevices:
         assert len(devices) == 1
         assert devices[0] == ("00:15:83:EB:05:17", "Paperang_P2")
 
-    @patch("subprocess.run")
+    @patch("paperang.transport._bt.subprocess.run")
     def test_scan_finds_miaomiaoji(self, mock_run):
         mock_proc = MagicMock()
         mock_proc.stdout = "[NEW] Device AA:BB:CC:DD:EE:FF MiaoMiaoJi_P2S\n"
@@ -76,7 +76,7 @@ class TestScanDevices:
         assert len(devices) == 1
         assert devices[0][1] == "MiaoMiaoJi_P2S"
 
-    @patch("subprocess.run")
+    @patch("paperang.transport._bt.subprocess.run")
     def test_scan_ignores_other_devices(self, mock_run):
         mock_proc = MagicMock()
         mock_proc.stdout = (
@@ -91,7 +91,7 @@ class TestScanDevices:
         assert len(devices) == 1
         assert devices[0][0] == "00:15:83:EB:05:17"
 
-    @patch("subprocess.run")
+    @patch("paperang.transport._bt.subprocess.run")
     def test_scan_empty(self, mock_run):
         mock_proc = MagicMock()
         mock_proc.stdout = ""
@@ -102,7 +102,8 @@ class TestScanDevices:
         devices = _scan_devices(timeout=1)
         assert devices == []
 
-    @patch("subprocess.run", side_effect=FileNotFoundError)
+    @patch("paperang.transport._bt.subprocess.run",
+           side_effect=FileNotFoundError)
     def test_scan_bluetoothctl_missing(self, mock_run):
         from paperang.transport._bt import _scan_devices
         devices = _scan_devices()
@@ -112,7 +113,7 @@ class TestScanDevices:
 class TestFindRfcommChannel:
     """Tests for SDP channel lookup."""
 
-    @patch("subprocess.run")
+    @patch("paperang.transport._bt.subprocess.run")
     def test_finds_channel_from_sdptool(self, mock_run):
         mock_proc = MagicMock()
         mock_proc.stdout = (
@@ -128,7 +129,7 @@ class TestFindRfcommChannel:
         channel = _find_rfcomm_channel("00:15:83:EB:05:17")
         assert channel == 5
 
-    @patch("subprocess.run")
+    @patch("paperang.transport._bt.subprocess.run")
     def test_falls_back_to_channel_1(self, mock_run):
         mock_proc = MagicMock()
         mock_proc.stdout = "No services found\n"
@@ -139,25 +140,40 @@ class TestFindRfcommChannel:
         channel = _find_rfcomm_channel("00:15:83:EB:05:17")
         assert channel == 1
 
-    @patch("subprocess.run", side_effect=FileNotFoundError)
+    @patch("paperang.transport._bt.subprocess.run",
+           side_effect=FileNotFoundError)
     def test_falls_back_when_sdptool_missing(self, mock_run):
         from paperang.transport._bt import _find_rfcomm_channel
         channel = _find_rfcomm_channel("00:15:83:EB:05:17")
         assert channel == 1
 
 
+# ── Helper: mock the whole socket module in _bt.py namespace ──
+
+def _bt_socket_mock():
+    """Return a mock that quacks like the socket module with Bluetooth support."""
+    import socket as _real_socket
+
+    mock_mod = MagicMock()
+    mock_mod.AF_BLUETOOTH = 31
+    mock_mod.SOCK_STREAM = 1
+    mock_mod.BTPROTO_RFCOMM = 3
+    mock_mod.timeout = _real_socket.timeout
+    mock_mod.OSError = OSError
+    mock_mod.socket = MagicMock()
+    return mock_mod
+
+
 class TestBtTransportConnect:
     """Tests for connect/send/recv/disconnect with mocked sockets."""
 
-    @staticmethod
-    def _make_mock_sock():
-        return MagicMock()
-
     def test_connect_with_explicit_address(self):
-        mock_sock = self._make_mock_sock()
+        mock_mod = _bt_socket_mock()
+        mock_sock = mock_mod.socket.return_value
+
         with (
             patch("paperang.transport._bt._find_rfcomm_channel", return_value=5),
-            patch("paperang.transport._bt.socket.socket", return_value=mock_sock),
+            patch("paperang.transport._bt.socket", mock_mod),
         ):
             t = BtTransport(address="00:15:83:EB:05:17")
             result = t.connect()
@@ -167,12 +183,13 @@ class TestBtTransportConnect:
         mock_sock.settimeout.assert_called_once_with(10.0)
 
     def test_connect_auto_discover(self):
-        mock_sock = self._make_mock_sock()
+        mock_mod = _bt_socket_mock()
+
         with (
             patch("paperang.transport._bt._scan_devices",
                   return_value=[("00:15:83:EB:05:17", "Paperang_P2")]),
             patch("paperang.transport._bt._find_rfcomm_channel", return_value=1),
-            patch("paperang.transport._bt.socket.socket", return_value=mock_sock),
+            patch("paperang.transport._bt.socket", mock_mod),
         ):
             t = BtTransport()
             result = t.connect()
@@ -181,21 +198,24 @@ class TestBtTransportConnect:
         assert t.address == "00:15:83:EB:05:17"
 
     def test_connect_no_devices_found(self):
-        mock_sock = self._make_mock_sock()
+        mock_mod = _bt_socket_mock()
+
         with (
             patch("paperang.transport._bt._scan_devices", return_value=[]),
-            patch("paperang.transport._bt.socket.socket", return_value=mock_sock),
+            patch("paperang.transport._bt.socket", mock_mod),
         ):
             t = BtTransport()
             with pytest.raises(RuntimeError, match="not found"):
                 t.connect()
 
     def test_connect_socket_error(self):
-        mock_sock = self._make_mock_sock()
+        mock_mod = _bt_socket_mock()
+        mock_sock = mock_mod.socket.return_value
         mock_sock.connect.side_effect = OSError("Connection refused")
+
         with (
             patch("paperang.transport._bt._find_rfcomm_channel", return_value=1),
-            patch("paperang.transport._bt.socket.socket", return_value=mock_sock),
+            patch("paperang.transport._bt.socket", mock_mod),
         ):
             t = BtTransport(address="00:15:83:EB:05:17")
             with pytest.raises(RuntimeError, match="Failed to connect"):
@@ -203,11 +223,13 @@ class TestBtTransportConnect:
         mock_sock.close.assert_called_once()
 
     def test_send_and_recv(self):
-        mock_sock = self._make_mock_sock()
+        mock_mod = _bt_socket_mock()
+        mock_sock = mock_mod.socket.return_value
         mock_sock.recv.return_value = b"OK"
+
         with (
             patch("paperang.transport._bt._find_rfcomm_channel", return_value=3),
-            patch("paperang.transport._bt.socket.socket", return_value=mock_sock),
+            patch("paperang.transport._bt.socket", mock_mod),
         ):
             t = BtTransport(address="00:15:83:EB:05:17", channel=3)
             t.connect()
@@ -218,12 +240,13 @@ class TestBtTransportConnect:
         assert data == b"OK"
 
     def test_recv_timeout_returns_empty(self):
-        import socket as _socket
-        mock_sock = self._make_mock_sock()
-        mock_sock.recv.side_effect = _socket.timeout("timed out")
+        mock_mod = _bt_socket_mock()
+        mock_sock = mock_mod.socket.return_value
+        mock_sock.recv.side_effect = mock_mod.timeout("timed out")
+
         with (
             patch("paperang.transport._bt._find_rfcomm_channel", return_value=1),
-            patch("paperang.transport._bt.socket.socket", return_value=mock_sock),
+            patch("paperang.transport._bt.socket", mock_mod),
         ):
             t = BtTransport(address="00:15:83:EB:05:17")
             t.connect()
@@ -232,11 +255,13 @@ class TestBtTransportConnect:
         assert data == b""
 
     def test_recv_oserror_returns_empty(self):
-        mock_sock = self._make_mock_sock()
+        mock_mod = _bt_socket_mock()
+        mock_sock = mock_mod.socket.return_value
         mock_sock.recv.side_effect = OSError("disconnected")
+
         with (
             patch("paperang.transport._bt._find_rfcomm_channel", return_value=1),
-            patch("paperang.transport._bt.socket.socket", return_value=mock_sock),
+            patch("paperang.transport._bt.socket", mock_mod),
         ):
             t = BtTransport(address="00:15:83:EB:05:17")
             t.connect()
@@ -245,10 +270,12 @@ class TestBtTransportConnect:
         assert data == b""
 
     def test_disconnect_closes_socket(self):
-        mock_sock = self._make_mock_sock()
+        mock_mod = _bt_socket_mock()
+        mock_sock = mock_mod.socket.return_value
+
         with (
             patch("paperang.transport._bt._find_rfcomm_channel", return_value=1),
-            patch("paperang.transport._bt.socket.socket", return_value=mock_sock),
+            patch("paperang.transport._bt.socket", mock_mod),
         ):
             t = BtTransport(address="00:15:83:EB:05:17")
             t.connect()
@@ -258,11 +285,13 @@ class TestBtTransportConnect:
         assert t._sock is None
 
     def test_disconnect_handles_oserror(self):
-        mock_sock = self._make_mock_sock()
+        mock_mod = _bt_socket_mock()
+        mock_sock = mock_mod.socket.return_value
         mock_sock.close.side_effect = OSError
+
         with (
             patch("paperang.transport._bt._find_rfcomm_channel", return_value=1),
-            patch("paperang.transport._bt.socket.socket", return_value=mock_sock),
+            patch("paperang.transport._bt.socket", mock_mod),
         ):
             t = BtTransport(address="00:15:83:EB:05:17")
             t.connect()
