@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.1.1] - 2026-06-09
+
+### Fixed
+- `BtTransport.recv()` now restores the socket timeout after reading.
+  Previously it changed the timeout to 1 s (read timeout) without restoring
+  the original connection timeout, causing `sendall()` in `print_bitmap()`
+  to time out on large transmissions.
+
+## [1.1.0] - 2026-06-08
+
+### Added
+- `BtTransport` — classic Bluetooth SPP (RFCOMM) support via Linux
+  `AF_BLUETOOTH` sockets.  Zero extra Python dependencies.
+
 ## [1.0.0] - 2026-06-07
 
 ### Changed
