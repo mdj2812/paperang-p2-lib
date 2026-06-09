@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "paperang-p2-lib"
-version = "1.0.1"
-description = "Python library for Paperang P2 thermal printer (USB protocol)"
+version = "1.1.0"
+description = "Python library for Paperang P2 thermal printer (USB + classic Bluetooth SPP)"
 readme = "README.md"
 license = {file = "LICENSE"}
 requires-python = ">=3.8"
