@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.1.2] - 2026-06-09
+
+### Removed
+- **BLE transport (`BleTransport`)** — removed entirely. The Paperang P2 uses
+  BR/EDR (classic Bluetooth SPP), not BLE. Use `BtTransport` for wireless.
+- `[ble]` extra (`bleak>=0.22.0`) from `pyproject.toml`
+- `tools/ble_scan.py` — BLE device scanner
+- `tests/test_ble.py` — 319 lines of BLE-only tests removed (now covered
+  via `BtTransport`)
+- NUS (Nordic UART Service) UUID constants from `constants.py`
+
+### Changed
+- README: replace BLE examples with `BtTransport` (Bluetooth SPP)
+
 ## [1.1.1] - 2026-06-09
 
 ### Fixed
