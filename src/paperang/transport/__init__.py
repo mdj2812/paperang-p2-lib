@@ -5,8 +5,7 @@ protocol logic works over USB, Bluetooth, or any future medium.
 """
 
 from ._base import Transport
-from ._ble import BleTransport
 from ._bt import BtTransport
 from ._usb import UsbTransport
 
-__all__ = ["Transport", "UsbTransport", "BleTransport", "BtTransport"]
+__all__ = ["Transport", "UsbTransport", "BtTransport"]
