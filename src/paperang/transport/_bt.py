@@ -157,6 +157,10 @@ class BtTransport(Transport):
 
         Returns:
             Raw bytes, or empty ``b''`` on timeout / error.
+
+        Restores the socket timeout after reading so that subsequent
+        ``send()`` calls (e.g. print_bitmap) use the full connection
+        timeout instead of the shorter read timeout.
         """
         if self._sock is None:
             return b""
@@ -167,6 +171,8 @@ class BtTransport(Transport):
             return b""
         except OSError:
             return b""
+        finally:
+            self._sock.settimeout(self.timeout)
 
     def disconnect(self) -> None:
         """Close the RFCOMM socket."""
