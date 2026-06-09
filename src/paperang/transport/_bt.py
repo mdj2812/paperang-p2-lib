@@ -61,10 +61,9 @@ def _find_rfcomm_channel(address: str) -> int:
     # Parse sdptool output for the Paperang service
     # Channel line looks like: "Channel: 1" or "Channel/Port: 1"
     in_paperang_section = False
+    short_uuid = PAPERANG_SERVICE_UUID.replace("-", "").lower()
     for line in proc.stdout.splitlines():
-        if PAPERANG_SERVICE_UUID.lower() in line.lower():
-            in_paperang_section = True
-        if "0000fee7" in line.lower():
+        if PAPERANG_SERVICE_UUID.lower() in line.lower() or short_uuid in line.lower():
             in_paperang_section = True
         if in_paperang_section and ("Channel" in line or "channel" in line):
             try:
