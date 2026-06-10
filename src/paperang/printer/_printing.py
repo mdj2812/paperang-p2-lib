@@ -68,8 +68,10 @@ class PaperangP2(PaperangPrinter):
         else:
             # Rotate 90° clockwise BEFORE binarization to avoid mode-'1' artifacts.
             img = img.transpose(Image.ROTATE_270)
-            # Scale the rotated image to fill the print-head width.
-            if img.width != PRINT_WIDTH:
+            # If the rotated image is wider than the print head, scale it down
+            # to fit. Narrow images (e.g. vertical text labels) keep their
+            # natural width for a compact vertical strip.
+            if img.width > PRINT_WIDTH:
                 ratio = PRINT_WIDTH / img.width
                 new_height = int(img.height * ratio)
                 img = img.resize((PRINT_WIDTH, new_height), Image.LANCZOS)
