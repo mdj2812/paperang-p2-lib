@@ -242,7 +242,7 @@ class TestVerticalPrinting:
         assert len(p2._transport.sent_packets) > 0
 
     def test_vertical_rotates_90_clockwise(self, p2):
-        """Vertical mode: bitmap rows should be narrower than PRINT_WIDTH."""
+        """Vertical mode: bitmap rows must be 72 bytes (= padded to PRINT_WIDTH)."""
         p2.print_text("HI", font_size=48, vertical=True)
         packets = p2._transport.sent_packets
         assert len(packets) > 0
@@ -256,10 +256,6 @@ class TestVerticalPrinting:
             bitmap_data.extend(pkt[5:5 + data_len])
 
         assert len(bitmap_data) > 0, "No bitmap data found"
-        # After rotation, width should be less than 576px (print head width)
-        # and greater than 8px (at least one byte per row).
-        # We verify by checking that total data is not a multiple of 72.
-        # (Normal mode always produces 72-byte rows.)
-        assert len(bitmap_data) % 72 != 0, (
-            "Vertical mode should produce narrower rows than horizontal (72 bytes)"
+        assert len(bitmap_data) % 72 == 0, (
+            f"Expected multiple of 72 bytes (PRINT_WIDTH padded), got {len(bitmap_data)}"
         )

@@ -68,9 +68,7 @@ class PaperangP2(PaperangPrinter):
         else:
             # Rotate 90° clockwise BEFORE binarization to avoid mode-'1' artifacts.
             img = img.transpose(Image.ROTATE_270)
-            # If the rotated image is wider than the print head, scale it down
-            # to fit. Narrow images (e.g. vertical text labels) keep their
-            # natural width for a compact vertical strip.
+            # If the rotated image is wider than the print head, scale it down.
             if img.width > PRINT_WIDTH:
                 ratio = PRINT_WIDTH / img.width
                 new_height = int(img.height * ratio)
@@ -80,6 +78,14 @@ class PaperangP2(PaperangPrinter):
             img = img.convert('L')
             img = img.point(lambda x: max(0, min(255, int((x - 128) * contrast + 128 * brightness))))
             img = img.point(lambda x: 0 if x < threshold else 255, '1')
+
+        if vertical and img.width < PRINT_WIDTH:
+            # Paste the narrow rotated image onto a full-width white canvas
+            # so the printer receives standard 72-byte rows.
+            canvas = Image.new('1', (PRINT_WIDTH, img.height), 1)
+            offset_x = (PRINT_WIDTH - img.width) // 2
+            canvas.paste(img, (offset_x, 0))
+            img = canvas
 
         img_width = img.width
         width_bytes = img_width // 8
