@@ -153,7 +153,6 @@ class PaperangP2(PaperangPrinter):
             total_height += h + 4
 
         img_width = max_width + 20 if vertical else PRINT_WIDTH
-        img_width = max(img_width, 8)  # minimum 1 byte
         img_height = ((total_height + 20 + 7) // 8) * 8
         img = Image.new('1', (img_width, img_height), 1)
         draw = ImageDraw.Draw(img)
