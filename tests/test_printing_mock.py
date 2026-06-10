@@ -2,7 +2,6 @@
 
 import os
 import struct
-from unittest.mock import MagicMock, patch, PropertyMock
 
 import pytest
 
@@ -38,6 +37,29 @@ def p2():
     return PaperangP2(MockTransport())
 
 
+def _extract_bitmap(packets):
+    """Extract combined bitmap data from CMD_PRINT_BITMAP (0x00) packets.
+
+    Packet format: [0x02][cmd:1B][remain:1B][dataLen:2B LE][data][CRC32:4B LE][0x03]
+    Returns bytearray of all bitmap data chunks concatenated.
+    """
+    data = bytearray()
+    for pkt in packets:
+        if len(pkt) < 10 or pkt[1] != 0x00:          # not CMD_PRINT_BITMAP
+            continue
+        data_len = struct.unpack_from('<H', pkt, 3)[0]
+        data.extend(pkt[5:5 + data_len])
+    return data
+
+
+def _assert_valid_bitmap(bm):
+    """Assert bitmap data is non-empty and each row is LINE_BYTES wide."""
+    assert len(bm) > 0, "No bitmap data found"
+    assert len(bm) % LINE_BYTES == 0, (
+        f"Expected multiple of {LINE_BYTES} bytes (PRINT_WIDTH={PRINT_WIDTH}), got {len(bm)}"
+    )
+
+
 class TestPatternTest:
     """Pattern test doesn't need PIL."""
 
@@ -62,16 +84,20 @@ class TestPrintText:
     def test_print_text_simple(self, p2):
         result = p2.print_text("Hello")
         assert result is True
-        assert len(p2._transport.sent_packets) > 0
+        bm = _extract_bitmap(p2._transport.sent_packets)
+        _assert_valid_bitmap(bm)
 
     def test_print_text_multiline(self, p2):
         result = p2.print_text("Line1\nLine2\nLine3")
         assert result is True
-        assert len(p2._transport.sent_packets) > 0
+        bm = _extract_bitmap(p2._transport.sent_packets)
+        _assert_valid_bitmap(bm)
 
     def test_print_text_custom_size(self, p2):
         result = p2.print_text("Big", font_size=48)
         assert result is True
+        bm = _extract_bitmap(p2._transport.sent_packets)
+        _assert_valid_bitmap(bm)
 
     def test_print_text_unicode(self, p2):
         """Chinese characters should not crash (may fallback to default font)."""
@@ -88,22 +114,22 @@ class TestPrintImage:
         img.save(path)
 
     def test_print_image_file(self, p2, tmp_path):
-        import tempfile
-        import os
         path = os.path.join(str(tmp_path), "test.png")
         self._make_test_image(path)
         result = p2.print_image(path, feed_before=0, feed_after=0)
         assert result is True
-        assert len(p2._transport.sent_packets) > 0
+        bm = _extract_bitmap(p2._transport.sent_packets)
+        _assert_valid_bitmap(bm)
 
     def test_print_image_wider_than_print_width(self, p2, tmp_path):
         from PIL import Image
-        import os
         path = os.path.join(str(tmp_path), "wide.png")
         img = Image.new("RGB", (1000, 100), "white")
         img.save(path)
         result = p2.print_image(path, feed_before=0, feed_after=0)
         assert result is True
+        bm = _extract_bitmap(p2._transport.sent_packets)
+        _assert_valid_bitmap(bm)
 
 
 class TestPrintQR:
@@ -113,12 +139,15 @@ class TestPrintQR:
         pytest.importorskip("qrcode")
         result = p2.print_qr("https://example.com")
         assert result is True
-        assert len(p2._transport.sent_packets) > 0
+        bm = _extract_bitmap(p2._transport.sent_packets)
+        _assert_valid_bitmap(bm)
 
     def test_print_qr_custom_size(self, p2):
         pytest.importorskip("qrcode")
         result = p2.print_qr("test", max_width=200)
         assert result is True
+        bm = _extract_bitmap(p2._transport.sent_packets)
+        _assert_valid_bitmap(bm)
 
     def test_print_qr_missing_lib(self, p2):
         """Should return False when qrcode is not installed."""
@@ -149,11 +178,14 @@ class TestPrintPickupCode:
     def test_print_pickup_code(self, p2):
         result = p2.print_pickup_code("19-4308")
         assert result is True
-        assert len(p2._transport.sent_packets) > 0
+        bm = _extract_bitmap(p2._transport.sent_packets)
+        _assert_valid_bitmap(bm)
 
     def test_print_pickup_code_long(self, p2):
         result = p2.print_pickup_code("A-1234567")
         assert result is True
+        bm = _extract_bitmap(p2._transport.sent_packets)
+        _assert_valid_bitmap(bm)
 
 
 class TestCustomFontPaths:
@@ -171,3 +203,88 @@ class TestCustomFontPaths:
             font_paths_pickup=["/nonexistent/pickup.ttf"],
         )
         assert p.font_paths_pickup == ["/nonexistent/pickup.ttf"]
+
+
+class TestVerticalPrinting:
+    """Vertical (rotated 90°) printing mode."""
+
+    def test_vertical_text(self, p2):
+        """Vertical text should produce valid bitmap packets."""
+        result = p2.print_text("VERTICAL LABEL", font_size=48, vertical=True)
+        assert result is True
+        bm = _extract_bitmap(p2._transport.sent_packets)
+        _assert_valid_bitmap(bm)
+
+    def test_vertical_text_multiline(self, p2):
+        """Vertical multiline text should not crash."""
+        result = p2.print_text("Line1\nLine2\nLine3", vertical=True)
+        assert result is True
+        bm = _extract_bitmap(p2._transport.sent_packets)
+        _assert_valid_bitmap(bm)
+
+    def test_vertical_text_unicode(self, p2):
+        """Vertical CJK text should not crash."""
+        result = p2.print_text("纵向打印", vertical=True)
+        assert result is True
+        bm = _extract_bitmap(p2._transport.sent_packets)
+        _assert_valid_bitmap(bm)
+
+    def test_vertical_image(self, p2, tmp_path):
+        """Vertical image should rotate and print."""
+        from PIL import Image
+        path = os.path.join(str(tmp_path), "test.png")
+        img = Image.new("RGB", (576, 200), "white")
+        # Draw a black rectangle to verify content survives rotation
+        from PIL import ImageDraw
+        draw = ImageDraw.Draw(img)
+        draw.rectangle([100, 50, 476, 150], fill="black")
+        img.save(path)
+        result = p2.print_image(path, vertical=True, feed_before=0, feed_after=0)
+        assert result is True
+        bm = _extract_bitmap(p2._transport.sent_packets)
+        _assert_valid_bitmap(bm)
+
+    def test_vertical_image_wider_than_print_width(self, p2, tmp_path):
+        """Vertical mode: image taller than 576px after rotation should scale down."""
+        from PIL import Image
+        path = os.path.join(str(tmp_path), "tall.png")
+        # Create an image that will be 800px wide after 90° rotation
+        # (i.e., 800px tall before rotation)
+        img = Image.new("RGB", (576, 800), "white")
+        img.save(path)
+        result = p2.print_image(path, vertical=True, feed_before=0, feed_after=0)
+        assert result is True
+        bm = _extract_bitmap(p2._transport.sent_packets)
+        _assert_valid_bitmap(bm)
+        # 800px wide → scaled to PRINT_WIDTH=576, height → int(576 * 576/800) = 414
+        assert len(bm) // LINE_BYTES == 414, (
+            f"Expected 414 rows after scaling, got {len(bm) // LINE_BYTES}"
+        )
+
+    def test_vertical_qr(self, p2):
+        """Vertical QR code should not crash."""
+        pytest.importorskip("qrcode")
+        result = p2.print_qr("https://example.com", vertical=True)
+        assert result is True
+        bm = _extract_bitmap(p2._transport.sent_packets)
+        _assert_valid_bitmap(bm)
+
+    def test_vertical_pickup_code(self, p2):
+        """Vertical pickup code should not crash."""
+        result = p2.print_pickup_code("19-4308", vertical=True)
+        assert result is True
+        bm = _extract_bitmap(p2._transport.sent_packets)
+        _assert_valid_bitmap(bm)
+
+    def test_vertical_backward_compat(self, p2):
+        """vertical=False (default) should produce same results as before."""
+        result = p2.print_text("normal")
+        assert result is True
+        bm = _extract_bitmap(p2._transport.sent_packets)
+        _assert_valid_bitmap(bm)
+
+    def test_vertical_rotates_90_clockwise(self, p2):
+        """Vertical mode: bitmap rows must be LINE_BYTES wide (= padded to PRINT_WIDTH)."""
+        p2.print_text("HI", font_size=48, vertical=True)
+        bm = _extract_bitmap(p2._transport.sent_packets)
+        _assert_valid_bitmap(bm)

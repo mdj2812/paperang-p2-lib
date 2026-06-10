@@ -33,8 +33,22 @@ class PaperangP2(PaperangPrinter):
     # ── High-level print functions ──────────────────────────────
 
     def print_image(self, image_path, heat_density=75, feed_before=50,
-                    feed_after=300, threshold=128, brightness=1.0, contrast=1.0):
-        """Print an image from a local file path or a remote URL."""
+                    feed_after=300, threshold=128, brightness=1.0, contrast=1.0,
+                    vertical=False):
+        """Print an image from a local file path or a remote URL.
+
+        Args:
+            image_path: Local file path or HTTP(S) URL to a PNG/JPEG image.
+            heat_density: 0-100 thermal print density.
+            feed_before: Lines of paper feed before printing.
+            feed_after: Lines of paper feed after printing.
+            threshold: Binarization threshold (0-255).
+            brightness: Brightness multiplier (1.0 = unchanged).
+            contrast: Contrast adjustment (1.0 = unchanged).
+            vertical: If True, rotate the image 90° clockwise
+                (text reads top-to-bottom along the paper strip).
+                Useful for labels and vertical receipts.
+        """
         if isinstance(image_path, str) and image_path.startswith(('http://', 'https://')):
             from io import BytesIO
             from urllib.request import urlopen
@@ -45,21 +59,40 @@ class PaperangP2(PaperangPrinter):
         else:
             img = Image.open(image_path)
 
-        if img.width != PRINT_WIDTH:
-            ratio = PRINT_WIDTH / img.width
-            new_height = int(img.height * ratio)
-            img = img.resize((PRINT_WIDTH, new_height), Image.LANCZOS)
+        if not vertical:
+            # Normal horizontal printing: scale to print-head width
+            if img.width != PRINT_WIDTH:
+                ratio = PRINT_WIDTH / img.width
+                new_height = int(img.height * ratio)
+                img = img.resize((PRINT_WIDTH, new_height), Image.LANCZOS)
+        else:
+            # Rotate 90° clockwise BEFORE binarization to avoid mode-'1' artifacts.
+            img = img.transpose(Image.ROTATE_270)
+            # If the rotated image is wider than the print head, scale it down.
+            if img.width > PRINT_WIDTH:
+                ratio = PRINT_WIDTH / img.width
+                new_height = int(img.height * ratio)
+                img = img.resize((PRINT_WIDTH, new_height), Image.LANCZOS)
 
         if img.mode != '1':
             img = img.convert('L')
             img = img.point(lambda x: max(0, min(255, int((x - 128) * contrast + 128 * brightness))))
             img = img.point(lambda x: 0 if x < threshold else 255, '1')
 
-        width_bytes = PRINT_WIDTH // 8
+        if vertical and img.width < PRINT_WIDTH:
+            # Paste the narrow rotated image onto a full-width white canvas
+            # so the printer receives standard 72-byte rows.
+            canvas = Image.new('1', (PRINT_WIDTH, img.height), 1)
+            offset_x = (PRINT_WIDTH - img.width) // 2
+            canvas.paste(img, (offset_x, 0))
+            img = canvas
+
+        img_width = img.width
+        width_bytes = img_width // 8
         data = bytearray()
         for y in range(img.height):
             row = bytearray(width_bytes)
-            for x in range(PRINT_WIDTH):
+            for x in range(img_width):
                 if img.getpixel((x, y)) == 0:
                     byte_pos = x // 8
                     bit_pos = 7 - (x % 8)
@@ -95,8 +128,14 @@ class PaperangP2(PaperangPrinter):
         fonts.extend(self._resolve_font_paths(BUNDLED_FONTS_TEXT))
         return fonts
 
-    def print_text(self, text, font_size=24, heat_density=75):
-        """Print text. CJK support requires installing with [cjk] extra."""
+    def print_text(self, text, font_size=24, heat_density=75, vertical=False):
+        """Print text. CJK support requires installing with [cjk] extra.
+
+        Args:
+            vertical: If True, text is rotated 90° clockwise to print
+                along the paper strip length. Larger font sizes (48–96)
+                produce dramatic vertical labels.
+        """
         font_paths = self._get_text_fonts()
         font = self._load_font(font_paths, font_size)
 
@@ -113,7 +152,7 @@ class PaperangP2(PaperangPrinter):
             line_heights.append(h + 4)
             total_height += h + 4
 
-        img_width = PRINT_WIDTH
+        img_width = max_width + 20 if vertical else PRINT_WIDTH
         img_height = ((total_height + 20 + 7) // 8) * 8
         img = Image.new('1', (img_width, img_height), 1)
         draw = ImageDraw.Draw(img)
@@ -125,10 +164,15 @@ class PaperangP2(PaperangPrinter):
 
         tmp_path = '/tmp/paperang_text.png'
         img.save(tmp_path)
-        return self.print_image(tmp_path, heat_density=heat_density)
+        return self.print_image(tmp_path, heat_density=heat_density, vertical=vertical)
 
-    def print_qr(self, content, box_size=10, heat_density=75, max_width=None):
-        """Print QR code."""
+    def print_qr(self, content, box_size=10, heat_density=75, max_width=None,
+                 vertical=False):
+        """Print QR code.
+
+        Args:
+            vertical: If True, rotate 90° clockwise for vertical printing.
+        """
         try:
             import qrcode
         except ImportError:
@@ -160,9 +204,10 @@ class PaperangP2(PaperangPrinter):
 
         tmp_path = '/tmp/paperang_qr.png'
         canvas.save(tmp_path)
-        return self.print_image(tmp_path, heat_density=heat_density)
+        return self.print_image(tmp_path, heat_density=heat_density, vertical=vertical)
 
-    def print_pickup_code(self, code, heat_density=100, compact=True):
+    def print_pickup_code(self, code, heat_density=100, compact=True,
+                          vertical=False):
         """Print one or more pickup codes in large bold style (96px, centered).
 
         Args:
@@ -171,6 +216,7 @@ class PaperangP2(PaperangPrinter):
             heat_density: Heat density 0-100 (default 100 for thermal paper).
             compact: Use tighter vertical spacing between multiple codes
                      (default True, ~30px gap; False uses ~60px gap).
+            vertical: If True, rotate 90° clockwise for vertical printing.
         """
         codes = [code] if isinstance(code, str) else list(code)
         font_paths = self.font_paths_pickup or self._resolve_font_paths(BUNDLED_FONTS_PICKUP)
@@ -203,7 +249,7 @@ class PaperangP2(PaperangPrinter):
         tmp_path = '/tmp/paperang_pickup_code.png'
         canvas.save(tmp_path)
         return self.print_image(tmp_path, heat_density=heat_density,
-                                feed_before=50, feed_after=200)
+                                feed_before=50, feed_after=200, vertical=vertical)
 
     # ── Test functions ──────────────────────────────────────────
 
