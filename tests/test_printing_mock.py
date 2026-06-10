@@ -242,14 +242,20 @@ class TestVerticalPrinting:
         assert len(p2._transport.sent_packets) > 0
 
     def test_vertical_rotates_90_clockwise(self, p2):
-        """Verify vertical mode actually rotates the image (width ≠ 576)."""
-        # When we print normally, the image is resized to PRINT_WIDTH=576.
-        # When vertical=True, the image is NOT resized to 576 first,
-        # then rotated. After rotation, the width should be the original
-        # height of the rendered text image (likely < 576 for short text).
+        """Vertical mode: bitmap width must be exactly 72 bytes (= PRINT_WIDTH 576/8)."""
         p2.print_text("HI", font_size=48, vertical=True)
         packets = p2._transport.sent_packets
         assert len(packets) > 0
-        # The first packet should contain valid bitmap data
-        # (at minimum, we verify it doesn't crash — the MockTransport
-        # confirms send() was called without errors)
+
+        # Packet format: [0x02][cmd:1B][remain:1B][dataLen:2B LE][data][CRC32:4B LE][0x03]
+        bitmap_data = bytearray()
+        for pkt in packets:
+            if len(pkt) < 10 or pkt[1] != 0x00:          # not CMD_PRINT_BITMAP
+                continue
+            data_len = struct.unpack_from('<H', pkt, 3)[0]
+            bitmap_data.extend(pkt[5:5 + data_len])
+
+        assert len(bitmap_data) > 0, "No bitmap data found"
+        assert len(bitmap_data) % 72 == 0, (
+            f"Expected multiple of 72 bytes, got {len(bitmap_data)}"
+        )

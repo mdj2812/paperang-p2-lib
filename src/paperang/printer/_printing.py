@@ -65,22 +65,19 @@ class PaperangP2(PaperangPrinter):
                 ratio = PRINT_WIDTH / img.width
                 new_height = int(img.height * ratio)
                 img = img.resize((PRINT_WIDTH, new_height), Image.LANCZOS)
+        else:
+            # Rotate 90° clockwise BEFORE binarization to avoid mode-'1' artifacts.
+            img = img.transpose(Image.ROTATE_270)
+            # Scale the rotated image to fill the print-head width.
+            if img.width != PRINT_WIDTH:
+                ratio = PRINT_WIDTH / img.width
+                new_height = int(img.height * ratio)
+                img = img.resize((PRINT_WIDTH, new_height), Image.LANCZOS)
 
         if img.mode != '1':
             img = img.convert('L')
             img = img.point(lambda x: max(0, min(255, int((x - 128) * contrast + 128 * brightness))))
             img = img.point(lambda x: 0 if x < threshold else 255, '1')
-
-        if vertical:
-            # Rotate 90° clockwise so the image prints along the paper length.
-            # The original image height becomes the print width (≤576).
-            # The original PRINT_WIDTH (or image width) becomes the print height.
-            img = img.transpose(Image.ROTATE_270)
-            # If the rotated image is wider than the print head, scale it down.
-            if img.width > PRINT_WIDTH:
-                ratio = PRINT_WIDTH / img.width
-                new_height = int(img.height * ratio)
-                img = img.resize((PRINT_WIDTH, new_height), Image.LANCZOS)
 
         img_width = img.width
         width_bytes = img_width // 8
