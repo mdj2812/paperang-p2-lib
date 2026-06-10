@@ -18,6 +18,7 @@ Based on [hurui200320/java-paperang-p2-usb](https://github.com/hurui200320/java-
 - QR code generation and printing
 - Pickup code printing (large bold)
 - Print profiles (portrait, landscape, document, etc.)
+- Vertical printing mode (rotate 90° for labels and narrow receipts)
 - Pattern test and heat density test
 - Full protocol command coverage (48 commands)
 - Status, battery, voltage, temperature reading
@@ -59,6 +60,11 @@ printer.print_qr("https://example.com")
 
 # Print pickup code
 printer.print_pickup_code("19-4308")
+
+# Vertical printing (rotate 90° for labels / narrow receipts)
+printer.print_text("LABEL", font_size=40, vertical=True)
+printer.print_image("logo.png", vertical=True)
+printer.print_qr("https://example.com", vertical=True)
 
 # Read printer info
 status  = printer.get_status()
@@ -103,10 +109,10 @@ Inherits from `PaperangPrinter`. Adds image/text/QR rendering on top of low-leve
 | Method | Description |
 |--------|-------------|
 | `connect()` | Connect to printer (default: USB; pass `transport=BtTransport()` for Bluetooth) |
-| `print_text(text, font_size, heat_density)` | Print text (CJK requires `[cjk]` extra) |
-| `print_image(path, heat_density, feed_before, feed_after, threshold, brightness, contrast)` | Print image |
-| `print_qr(content, box_size, heat_density, max_width)` | Print QR code |
-| `print_pickup_code(code, heat_density)` | Print large bold pickup code |
+| `print_text(text, font_size, heat_density, vertical)` | Print text (CJK requires `[cjk]` extra; `vertical=True` rotates 90°) |
+| `print_image(path, heat_density, feed_before, feed_after, threshold, brightness, contrast, vertical)` | Print image (supports `vertical=True` for 90° rotation) |
+| `print_qr(content, box_size, heat_density, max_width, vertical)` | Print QR code (`vertical=True` rotates 90°) |
+| `print_pickup_code(code, heat_density, vertical)` | Print large bold pickup code (`vertical=True` rotates 90°) |
 | `print_pattern_test()` | Print pattern test |
 | `print_heat_density_test()` | Print heat density gradient |
 

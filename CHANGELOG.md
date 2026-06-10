@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.2.0] - 2026-06-10
+
+### Added
+- **Vertical printing mode** — `vertical=True` parameter for `print_image()`,
+  `print_text()`, `print_qr()`, and `print_pickup_code()`. Rotates the image
+  90° clockwise so content reads top-to-bottom along the paper strip. Ideal for
+  labels, receipts, and narrow-format printing.
+- Vertical image auto-scaling: if the rotated image exceeds PRINT_WIDTH (576px),
+  it is automatically scaled down to fit.
+- Narrow vertical images are centred on a full-width canvas to guarantee
+  consistent 72-byte rows.
+
+### Changed
+- `_extract_bitmap` / `_assert_valid_bitmap` test helpers for consistent
+  bitmap validation across all print tests.
+- Magic number `72` replaced with `LINE_BYTES` constant throughout tests.
+
 ## [1.1.2] - 2026-06-09
 
 ### Removed
