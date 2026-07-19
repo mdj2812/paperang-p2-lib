@@ -5,7 +5,7 @@ protocol logic works over USB, Bluetooth, or any future medium.
 """
 
 from ._base import Transport
-from ._bt import BtTransport
+from ._bt import BtTransport, PAPERANG_SERVICE_UUID, _check_paperang_uuid  # noqa: F401
 from ._usb import UsbTransport
 
 __all__ = ["Transport", "UsbTransport", "BtTransport"]
