@@ -23,6 +23,14 @@ def _scan_devices(timeout: float = 8.0) -> list[tuple[str, str]]:
 
     Returns:
         List of (address, name) tuples.
+
+    Discovery strategy:
+    1. Collect ALL [NEW] Device entries (no filtering)
+    2. Name starts with paperang/miaomiaoji → fast path accept
+    3. Otherwise → bluetoothctl info <addr>, check for 0000fee7 UUID
+
+    This ensures renamed devices and non-standard name variants are still
+    discoverable by their SDP service UUID.
     """
     try:
         proc = subprocess.run(
@@ -32,16 +40,33 @@ def _scan_devices(timeout: float = 8.0) -> list[tuple[str, str]]:
     except (subprocess.TimeoutExpired, FileNotFoundError):
         return []
 
-    devices: list[tuple[str, str]] = []
+    # Phase 1: collect all [NEW] Device entries (don't filter yet)
+    all_devices: list[tuple[str, str]] = []
     for line in proc.stdout.splitlines() + proc.stderr.splitlines():
-        # bluetoothctl output: "[NEW] Device XX:XX:XX:XX:XX:XX Paperang_P2"
         if "[NEW] Device" in line:
             parts = line.split("Device ", 1)[-1].strip().split(" ", 1)
             if len(parts) >= 2:
-                addr, name = parts[0], parts[1]
-                name_lower = name.lower()
-                if any(name_lower.startswith(n) for n in PAPERANG_BT_NAMES):
-                    devices.append((addr, name))
+                all_devices.append((parts[0], parts[1]))
+
+    # Phase 2: accept by name (fast path) or UUID (fallback)
+    devices: list[tuple[str, str]] = []
+    for addr, name in all_devices:
+        name_lower = name.lower()
+        if any(name_lower.startswith(n) for n in PAPERANG_BT_NAMES):
+            devices.append((addr, name))
+            continue
+
+        # UUID fallback: query bluetoothctl info for the service UUID
+        try:
+            info = subprocess.run(
+                ["bluetoothctl", "info", addr],
+                capture_output=True, text=True, timeout=5,
+            )
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            continue
+        if "0000fee7" in info.stdout.lower():
+            devices.append((addr, name))
+
     return devices
 
 

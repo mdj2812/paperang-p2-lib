@@ -109,6 +109,116 @@ class TestScanDevices:
         devices = _scan_devices()
         assert devices == []
 
+    # ── UUID fallback tests ──
+
+    def test_scan_uuid_fallback_finds_renamed_device(self):
+        """A device with non-standard name but matching UUID is discovered."""
+        from paperang.transport._bt import _scan_devices
+
+        scan_proc = MagicMock()
+        scan_proc.stdout = "[NEW] Device AA:BB:CC:DD:EE:FF MyRenamedPrinter\n"
+        scan_proc.stderr = ""
+
+        info_proc = MagicMock()
+        info_proc.stdout = (
+            "Device AA:BB:CC:DD:EE:FF\n"
+            "    Name: MyRenamedPrinter\n"
+            "    UUID: Vendor specific  (0000fee7-0000-1000-8000-00805f9b34fb)\n"
+        )
+        info_proc.stderr = ""
+
+        with patch("paperang.transport._bt.subprocess.run",
+                   side_effect=[scan_proc, info_proc]):
+            devices = _scan_devices(timeout=1)
+
+        assert len(devices) == 1
+        assert devices[0] == ("AA:BB:CC:DD:EE:FF", "MyRenamedPrinter")
+
+    def test_scan_uuid_fallback_skips_non_paperang(self):
+        """A device with non-matching name and no matching UUID is excluded."""
+        from paperang.transport._bt import _scan_devices
+
+        scan_proc = MagicMock()
+        scan_proc.stdout = "[NEW] Device 11:22:33:44:55:66 SomeSpeaker\n"
+        scan_proc.stderr = ""
+
+        info_proc = MagicMock()
+        info_proc.stdout = (
+            "Device 11:22:33:44:55:66\n"
+            "    Name: SomeSpeaker\n"
+            "    UUID: Audio Sink  (0000110b-0000-1000-8000-00805f9b34fb)\n"
+        )
+        info_proc.stderr = ""
+
+        with patch("paperang.transport._bt.subprocess.run",
+                   side_effect=[scan_proc, info_proc]):
+            devices = _scan_devices(timeout=1)
+
+        assert devices == []
+
+    def test_scan_uuid_fallback_and_name_match_coexist(self):
+        """Both fast path (name) and UUID fallback find devices in same scan."""
+        from paperang.transport._bt import _scan_devices
+
+        scan_proc = MagicMock()
+        scan_proc.stdout = (
+            "[NEW] Device 00:15:83:EB:05:17 Paperang_P2\n"
+            "[NEW] Device AA:BB:CC:DD:EE:FF RenamedPrinty\n"
+            "[NEW] Device 11:22:33:44:55:66 RandomSpeaker\n"
+        )
+        scan_proc.stderr = ""
+
+        info_renamed = MagicMock()
+        info_renamed.stdout = (
+            "Device AA:BB:CC:DD:EE:FF\n"
+            "    UUID: Vendor specific  (0000fee7-0000-1000-8000-00805f9b34fb)\n"
+        )
+        info_renamed.stderr = ""
+
+        info_speaker = MagicMock()
+        info_speaker.stdout = (
+            "Device 11:22:33:44:55:66\n"
+            "    UUID: Audio Sink  (0000110b-0000-1000-8000-00805f9b34fb)\n"
+        )
+        info_speaker.stderr = ""
+
+        with patch("paperang.transport._bt.subprocess.run",
+                   side_effect=[scan_proc, info_renamed, info_speaker]):
+            devices = _scan_devices(timeout=1)
+
+        assert len(devices) == 2
+        assert devices[0] == ("00:15:83:EB:05:17", "Paperang_P2")
+        assert devices[1] == ("AA:BB:CC:DD:EE:FF", "RenamedPrinty")
+
+    def test_scan_uuid_fallback_info_timeout(self):
+        """bluetoothctl info times out → device skipped, no crash."""
+        from paperang.transport._bt import _scan_devices
+        import subprocess as _sp
+
+        scan_proc = MagicMock()
+        scan_proc.stdout = "[NEW] Device DE:AD:BE:EF:00:01 UnknownDevice\n"
+        scan_proc.stderr = ""
+
+        with patch("paperang.transport._bt.subprocess.run",
+                   side_effect=[scan_proc, _sp.TimeoutExpired(cmd="...", timeout=5)]):
+            devices = _scan_devices(timeout=1)
+
+        assert devices == []
+
+    def test_scan_uuid_fallback_info_file_not_found(self):
+        """bluetoothctl not available for info → device skipped, no crash."""
+        from paperang.transport._bt import _scan_devices
+
+        scan_proc = MagicMock()
+        scan_proc.stdout = "[NEW] Device DE:AD:BE:EF:00:02 UnknownGadget\n"
+        scan_proc.stderr = ""
+
+        with patch("paperang.transport._bt.subprocess.run",
+                   side_effect=[scan_proc, FileNotFoundError]):
+            devices = _scan_devices(timeout=1)
+
+        assert devices == []
+
 
 class TestFindRfcommChannel:
     """Tests for SDP channel lookup."""
