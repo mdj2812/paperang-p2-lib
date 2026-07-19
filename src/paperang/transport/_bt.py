@@ -18,7 +18,7 @@ PAPERANG_SERVICE_UUID = "0000fee7-0000-1000-8000-00805f9b34fb"
 SPP_UUID = "00001101-0000-1000-8000-00805f9b34fb"
 
 
-def _check_paperang_uuid(address: str) -> bool:
+def check_paperang_uuid(address: str) -> bool:
     """Check if a Bluetooth device advertises the Paperang service UUID.
 
     Queries ``bluetoothctl info`` for the device's UUID list and returns
@@ -72,7 +72,7 @@ def _scan_devices(timeout: float = 8.0) -> list[tuple[str, str]]:
             devices.append((addr, name))
             continue
 
-        if _check_paperang_uuid(addr):
+        if check_paperang_uuid(addr):
             devices.append((addr, name))
 
     return devices

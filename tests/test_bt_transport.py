@@ -121,7 +121,7 @@ class TestScanDevices:
 
         with patch("paperang.transport._bt.subprocess.run",
                    return_value=scan_proc), \
-             patch("paperang.transport._bt._check_paperang_uuid",
+             patch("paperang.transport._bt.check_paperang_uuid",
                    return_value=True):
             devices = _scan_devices(timeout=1)
 
@@ -138,7 +138,7 @@ class TestScanDevices:
 
         with patch("paperang.transport._bt.subprocess.run",
                    return_value=scan_proc), \
-             patch("paperang.transport._bt._check_paperang_uuid",
+             patch("paperang.transport._bt.check_paperang_uuid",
                    return_value=False):
             devices = _scan_devices(timeout=1)
 
@@ -158,7 +158,7 @@ class TestScanDevices:
 
         with patch("paperang.transport._bt.subprocess.run",
                    return_value=scan_proc), \
-             patch("paperang.transport._bt._check_paperang_uuid",
+             patch("paperang.transport._bt.check_paperang_uuid",
                    side_effect=[True, False]):
             devices = _scan_devices(timeout=1)
 
@@ -166,9 +166,9 @@ class TestScanDevices:
         assert devices[0] == ("00:15:83:EB:05:17", "Paperang_P2")
         assert devices[1] == ("AA:BB:CC:DD:EE:FF", "RenamedPrinty")
 
-    def test_check_paperang_uuid_finds_service(self):
-        """_check_paperang_uuid returns True when bluetoothctl info shows UUID."""
-        from paperang.transport._bt import _check_paperang_uuid
+    def testcheck_paperang_uuid_finds_service(self):
+        """check_paperang_uuid returns True when bluetoothctl info shows UUID."""
+        from paperang.transport._bt import check_paperang_uuid
 
         info_proc = MagicMock()
         info_proc.stdout = (
@@ -179,11 +179,11 @@ class TestScanDevices:
 
         with patch("paperang.transport._bt.subprocess.run",
                    return_value=info_proc):
-            assert _check_paperang_uuid("AA:BB:CC:DD:EE:FF") is True
+            assert check_paperang_uuid("AA:BB:CC:DD:EE:FF") is True
 
-    def test_check_paperang_uuid_no_service(self):
-        """_check_paperang_uuid returns False for non-Paperang UUID."""
-        from paperang.transport._bt import _check_paperang_uuid
+    def testcheck_paperang_uuid_no_service(self):
+        """check_paperang_uuid returns False for non-Paperang UUID."""
+        from paperang.transport._bt import check_paperang_uuid
 
         info_proc = MagicMock()
         info_proc.stdout = (
@@ -194,24 +194,24 @@ class TestScanDevices:
 
         with patch("paperang.transport._bt.subprocess.run",
                    return_value=info_proc):
-            assert _check_paperang_uuid("11:22:33:44:55:66") is False
+            assert check_paperang_uuid("11:22:33:44:55:66") is False
 
-    def test_check_paperang_uuid_timeout(self):
-        """_check_paperang_uuid returns False on TimeoutExpired."""
-        from paperang.transport._bt import _check_paperang_uuid
+    def testcheck_paperang_uuid_timeout(self):
+        """check_paperang_uuid returns False on TimeoutExpired."""
+        from paperang.transport._bt import check_paperang_uuid
         import subprocess as _sp
 
         with patch("paperang.transport._bt.subprocess.run",
                    side_effect=_sp.TimeoutExpired(cmd="...", timeout=5)):
-            assert _check_paperang_uuid("DE:AD:BE:EF:00:01") is False
+            assert check_paperang_uuid("DE:AD:BE:EF:00:01") is False
 
-    def test_check_paperang_uuid_file_not_found(self):
-        """_check_paperang_uuid returns False when bluetoothctl is missing."""
-        from paperang.transport._bt import _check_paperang_uuid
+    def testcheck_paperang_uuid_file_not_found(self):
+        """check_paperang_uuid returns False when bluetoothctl is missing."""
+        from paperang.transport._bt import check_paperang_uuid
 
         with patch("paperang.transport._bt.subprocess.run",
                    side_effect=FileNotFoundError):
-            assert _check_paperang_uuid("DE:AD:BE:EF:00:02") is False
+            assert check_paperang_uuid("DE:AD:BE:EF:00:02") is False
 
 
 class TestFindRfcommChannel:
