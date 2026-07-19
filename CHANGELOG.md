@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.1] - 2026-07-19
+
+### Fixed
+- `BtTransport._scan_devices()` now discovers printers by SDP UUID (`0000fee7`)
+  when the reported device name doesn't match `{paperang, miaomiaoji}`. Renamed or
+  non-standard named printers are discovered via `bluetoothctl info` fallback.
+  Name-matched devices use the existing fast path with zero overhead.
+
 ## [1.2.0] - 2026-06-10
 
 ### Added
