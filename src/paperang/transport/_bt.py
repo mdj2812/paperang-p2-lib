@@ -18,6 +18,22 @@ PAPERANG_SERVICE_UUID = "0000fee7-0000-1000-8000-00805f9b34fb"
 SPP_UUID = "00001101-0000-1000-8000-00805f9b34fb"
 
 
+def _check_paperang_uuid(address: str) -> bool:
+    """Check if a Bluetooth device advertises the Paperang service UUID.
+
+    Queries ``bluetoothctl info`` for the device's UUID list and returns
+    True if ``PAPERANG_SERVICE_UUID`` (0000fee7) is present.
+    """
+    try:
+        info = subprocess.run(
+            ["bluetoothctl", "info", address],
+            capture_output=True, text=True, timeout=5,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return False
+    return PAPERANG_SERVICE_UUID in info.stdout.lower()
+
+
 def _scan_devices(timeout: float = 8.0) -> list[tuple[str, str]]:
     """Scan for Paperang devices via bluetoothctl.
 
@@ -56,15 +72,7 @@ def _scan_devices(timeout: float = 8.0) -> list[tuple[str, str]]:
             devices.append((addr, name))
             continue
 
-        # UUID fallback: query bluetoothctl info for the service UUID
-        try:
-            info = subprocess.run(
-                ["bluetoothctl", "info", addr],
-                capture_output=True, text=True, timeout=5,
-            )
-        except (subprocess.TimeoutExpired, FileNotFoundError):
-            continue
-        if "0000fee7" in info.stdout.lower():
+        if _check_paperang_uuid(addr):
             devices.append((addr, name))
 
     return devices
