@@ -9,12 +9,15 @@ Full guide: docs/adding-a-model.md
 
 ## Model
 
-- Model name:
-- Bluetooth name:
-- `CMD_GET_MODEL` returns:
-- USB VID:PID: `0x…:0x…`
-- Print head width: … dots (… bytes/row)
-- Paper / format:
+<!-- Replace the examples: they show the P2, whose values are known good. If a
+     value cannot be measured yet, write that instead of guessing. -->
+
+- Model name: `P2` — also becomes the model file name, lower-cased (`p2.json`)
+- Bluetooth name: `Paperang_P2` — exactly as `bluetoothctl devices` reports it
+- `CMD_GET_MODEL` returns: `Paperang_P2` — what `printer.get_model()` prints
+- USB VID:PID: `0x4348:0x5584` — from `lsusb`, or the HA config flow
+- Print head width: 576 dots (72 bytes/row, i.e. dots ÷ 8) — confirm from a test print
+- Paper / format: roll or label size you printed on, e.g. 57 mm continuous
 
 ## Protocol compatibility
 
