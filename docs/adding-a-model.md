@@ -4,6 +4,9 @@ Paperang printers share one protocol. What differs between models is *identity*
 (USB IDs, Bluetooth names) and *geometry* (print-head width), so adding a model
 means adding a small JSON file — no Python changes.
 
+The list of models that are already supported, and what has been verified for
+each, lives in [MODELS.md](../MODELS.md).
+
 ## Model vs profile
 
 - A **model** is the hardware: which device is connected and how wide its print

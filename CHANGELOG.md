@@ -38,6 +38,10 @@
   `PAPERANG_BT_NAMES`, and `PAPERANG_SERVICE_UUID`.
 
 ### Changed
+- Docs: the supported-models table moved from the README into
+  [MODELS.md](MODELS.md), which also explains how a device is identified and what
+  each entry's verification status means. `AGENTS.md` records the repository
+  conventions for coding agents.
 - Tests: print geometry is now checked for **every registered model** through a
   parameterized matrix (image scaling, bitmap row alignment, per-packet row
   counts, text and QR alignment), plus a synthetic 384-dot head until #22 adds

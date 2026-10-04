@@ -29,26 +29,9 @@ Based on [hurui200320/java-paperang-p2-usb](https://github.com/hurui200320/java-
 
 ## Supported models
 
-| Model | USB PID | Print head | Transports | Status |
-|-------|---------|------------|------------|--------|
-| P2 | `0x5584` | 576 dots (72 bytes/row) | USB, Bluetooth SPP | Verified |
-| D1 / ZYB-D1 | `0x5585` | 384 dots (48 bytes/row) | USB (Bluetooth untested) | Reported working over USB |
-
-All models share vendor ID `0x4348`. Model metadata lives in
-[`src/paperang/models/`](src/paperang/models/) — one JSON file per model — and
-`Paperang.auto_detect()` resolves the model from the USB product ID and the
-string reported by `CMD_GET_MODEL`.
-
-The D1 entry comes from a community report
-([#22](https://github.com/mdj2812/paperang-p2-lib/issues/22)): it prints over
-USB once the product ID and width are changed, so the geometry is in the model
-table, but classic Bluetooth and the 384-dot layout are still untested. Only the
-verified transport is declared — `transports` never claims more than was
-actually tested.
-
-Adding a model is adding a JSON file — see
-[docs/adding-a-model.md](docs/adding-a-model.md). Note that a model must speak
-the same protocol; a matching print-head width alone is not enough.
+See **[MODELS.md](https://github.com/mdj2812/paperang-p2-lib/blob/main/MODELS.md)**
+for the supported models table, how a device is identified, what each entry's
+verification status means, and how to add a model.
 
 ## Installation
 
@@ -240,7 +223,8 @@ will render as boxes or missing glyph symbols.
 ## Protocol Details
 
 - **Vendor ID:** 0x4348
-- **Product ID / print width:** per model — see [Supported models](#supported-models)
+- **Product ID / print width:** per model — see
+  [MODELS.md](https://github.com/mdj2812/paperang-p2-lib/blob/main/MODELS.md)
 - **Packet size:** as many rows as fit in 1023 bytes (14 rows for the P2's
   72-byte rows, 21 rows for a 384-dot head)
 
