@@ -278,11 +278,11 @@ class TestPrintBitmap:
     """Test bitmap printing."""
 
     def test_print_bitmap_small(self, printer):
-        data = b"\xFF" * 72 * 5  # 5 lines
+        data = b"\xFF" * printer.line_bytes * 5  # 5 lines
         printer.print_bitmap(data)
         assert len(printer._transport.sent_packets) >= 1
 
     def test_print_bitmap_multipacket(self, printer):
-        data = b"\x00" * 72 * 20  # 20 lines → multi-packet
+        data = b"\x00" * printer.line_bytes * 20  # 20 lines → multi-packet
         printer.print_bitmap(data)
         assert len(printer._transport.sent_packets) >= 2
