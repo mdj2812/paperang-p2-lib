@@ -18,9 +18,28 @@ from __future__ import annotations
 
 import glob
 import json
+import logging
 import os
 import re
 from dataclasses import dataclass, fields
+
+log = logging.getLogger(__name__)
+
+#: Transports the library can speak.
+TRANSPORTS = ("usb", "spp")
+
+# A Bluetooth service UUID in the canonical 128-bit form, lower-case: 8 hex
+# digits, then three groups of 4, then one group of 12, joined by hyphens —
+# e.g. 0000fee7-0000-1000-8000-00805f9b34fb, the form bluetoothctl and
+# sdptool print.  Short 16-bit aliases such as "fee7" are rejected rather than
+# expanded, so a model file always carries the full string seen on the command
+# line and cannot silently mean something else.
+_UUID_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+)
+
+# Strips everything that is not a-z or 0-9, for model-name matching.
+_ALIAS_RE = re.compile(r"[^a-z0-9]")
 
 
 class UnknownModelError(ValueError):
@@ -63,6 +82,14 @@ class PrinterModel:
             by ``CMD_GET_MODEL`` or used in the wild.  Matching ignores case
             and any non-alphanumeric characters, so ``"paperang_p2"``,
             ``"Paperang P2"`` and ``"PaperangP2"`` all collapse to one alias.
+        transports: Transports this model supports, a subset of
+            ``("usb", "spp")``.
+        bt_name_prefixes: Bluetooth device-name prefixes used during classic
+            Bluetooth discovery.
+        bt_service_uuids: Bluetooth service UUIDs that identify the printer
+            during discovery or SDP channel lookup.
+        bt_rfcomm_channel: Known RFCOMM channel, when auto-detection via SDP
+            is not available on a model.
     """
 
     name: str
@@ -70,6 +97,10 @@ class PrinterModel:
     pids: tuple[int, ...]
     print_width: int
     aliases: tuple[str, ...] = ()
+    transports: tuple[str, ...] = TRANSPORTS
+    bt_name_prefixes: tuple[str, ...] = ()
+    bt_service_uuids: tuple[str, ...] = ()
+    bt_rfcomm_channel: "int | None" = None
 
     def __post_init__(self):
         if not self.pids:
@@ -78,6 +109,17 @@ class PrinterModel:
             raise ValueError(
                 f"{self.name}: print_width must be a positive multiple of 8, "
                 f"got {self.print_width}"
+            )
+        unsupported = [t for t in self.transports if t not in TRANSPORTS]
+        if unsupported:
+            raise ValueError(
+                f"{self.name}: unsupported transport(s) {', '.join(unsupported)}. "
+                f"Supported: {', '.join(TRANSPORTS)}"
+            )
+        if self.bt_rfcomm_channel is not None and not 1 <= self.bt_rfcomm_channel <= 30:
+            raise ValueError(
+                f"{self.name}: bt_rfcomm_channel must be between 1 and 30, "
+                f"got {self.bt_rfcomm_channel}"
             )
 
     @property
@@ -89,6 +131,14 @@ class PrinterModel:
     def line_bytes(self) -> int:
         """Bytes per bitmap row: ``print_width // 8``."""
         return self.print_width // 8
+
+    @property
+    def supports_usb(self) -> bool:
+        return "usb" in self.transports
+
+    @property
+    def supports_bluetooth(self) -> bool:
+        return "spp" in self.transports
 
     @classmethod
     def from_dict(cls, data, source=None) -> "PrinterModel":
@@ -127,6 +177,30 @@ class PrinterModel:
         if not isinstance(aliases, (list, tuple)):
             raise InvalidModelError(f"aliases{where} must be a list of strings")
 
+        transports = data.get("transports", TRANSPORTS)
+        if not isinstance(transports, (list, tuple)):
+            raise InvalidModelError(f"transports{where} must be a list of strings")
+
+        name_prefixes = data.get("bt_name_prefixes", ())
+        if not isinstance(name_prefixes, (list, tuple)):
+            raise InvalidModelError(
+                f"bt_name_prefixes{where} must be a list of strings"
+            )
+
+        service_uuids = data.get("bt_service_uuids", ())
+        if not isinstance(service_uuids, (list, tuple)):
+            raise InvalidModelError(
+                f"bt_service_uuids{where} must be a list of strings"
+            )
+        for uuid in service_uuids:
+            if not _UUID_RE.match(str(uuid).lower()):
+                raise InvalidModelError(
+                    f"bt_service_uuids{where}: {uuid!r} is not a "
+                    "128-bit UUID (expected e.g. 0000fee7-0000-1000-8000-00805f9b34fb)"
+                )
+
+        channel = data.get("bt_rfcomm_channel")
+
         try:
             return cls(
                 name=str(data["name"]),
@@ -134,6 +208,12 @@ class PrinterModel:
                 pids=tuple(_as_int(p, "pids") for p in pids),
                 print_width=_as_int(data["print_width"], "print_width"),
                 aliases=tuple(str(a) for a in aliases),
+                transports=tuple(str(t).lower() for t in transports),
+                bt_name_prefixes=tuple(str(p).lower() for p in name_prefixes),
+                bt_service_uuids=tuple(str(u).lower() for u in service_uuids),
+                bt_rfcomm_channel=(
+                    None if channel is None else _as_int(channel, "bt_rfcomm_channel")
+                ),
             )
         except InvalidModelError:
             raise
@@ -187,7 +267,7 @@ P2 = MODELS[DEFAULT_MODEL]
 
 def _normalize_name(name: str) -> str:
     """Fold a model name for matching: lower-case, alphanumerics only."""
-    return re.sub(r"[^a-z0-9]", "", name.lower())
+    return _ALIAS_RE.sub("", name.lower())
 
 
 def _build_index() -> dict:
@@ -208,6 +288,110 @@ def _build_index() -> dict:
 def list_models() -> dict:
     """Return a copy of the registered models."""
     return dict(MODELS)
+
+
+def usb_pids() -> tuple:
+    """Every USB product ID across registered models, in registration order.
+
+    Used to search for a printer when the model is not known yet.
+    """
+    pids: list = []
+    for model in MODELS.values():
+        for pid in model.pids:
+            if pid not in pids:
+                pids.append(pid)
+    return tuple(pids)
+
+
+def models_for_usb(vid, pid) -> tuple:
+    """Registered models matching a USB vendor/product ID pair."""
+    return tuple(
+        model
+        for model in MODELS.values()
+        if model.vid == vid and pid in model.pids
+    )
+
+
+def bt_name_prefixes() -> tuple:
+    """Union of the Bluetooth name prefixes across registered models."""
+    prefixes: list = []
+    for model in MODELS.values():
+        for prefix in model.bt_name_prefixes:
+            if prefix not in prefixes:
+                prefixes.append(prefix)
+    return tuple(prefixes)
+
+
+def bt_service_uuids() -> tuple:
+    """Union of the Bluetooth service UUIDs across registered models."""
+    uuids: list = []
+    for model in MODELS.values():
+        for uuid in model.bt_service_uuids:
+            if uuid not in uuids:
+                uuids.append(uuid)
+    return tuple(uuids)
+
+
+def resolve_model(vid=None, pid=None, reported_name=None) -> PrinterModel:
+    """Pick the model for a connected printer.
+
+    The USB identification (``vid``/``pid``) and the name reported by
+    ``CMD_GET_MODEL`` are both considered.  The reported name wins on conflict,
+    because it describes the device that actually answered — but a warning is
+    logged, since that usually means the model table is out of date.
+
+    Args:
+        vid: USB vendor ID of the connected device, if known.
+        pid: USB product ID of the connected device, if known.
+        reported_name: Model string reported by the printer, if any.
+
+    Raises:
+        UnknownModelError: Neither the USB IDs nor the reported name could be
+            matched to a registered model.
+    """
+    by_usb = models_for_usb(vid, pid) if vid is not None and pid is not None else ()
+
+    by_name = None
+    if reported_name:
+        try:
+            by_name = get_model(reported_name)
+        except (UnknownModelError, InvalidModelError):
+            by_name = None
+
+    if by_usb and by_name:
+        if by_name not in by_usb:
+            log.warning(
+                "Printer reports model %r (matched %s) but USB ID %04x:%04x "
+                "maps to %s; trusting the reported model",
+                reported_name,
+                by_name.name,
+                vid,
+                pid,
+                ", ".join(m.name for m in by_usb),
+            )
+        return by_name
+
+    if by_name is not None:
+        log.info("Identified %s from CMD_GET_MODEL", by_name.name)
+        return by_name
+
+    if by_usb:
+        log.info("Identified %s from USB ID %04x:%04x", by_usb[0].name, vid, pid)
+        return by_usb[0]
+
+    known = ", ".join(sorted(MODELS))
+    details = []
+    if vid is not None and pid is not None:
+        details.append(f"USB ID {vid:04x}:{pid:04x}")
+    if reported_name:
+        details.append(f"reported model {reported_name!r}")
+    found = " and ".join(details) if details else "the device"
+
+    raise UnknownModelError(
+        f"Could not identify {found}. Known models: {known}. "
+        "Pass model= with a registered name, a path to a model JSON file, or a "
+        "PrinterModel instance."
+    )
 
 
 def get_model(model=None) -> PrinterModel:

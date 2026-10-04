@@ -110,6 +110,7 @@ different printer model. `PaperangP2` is kept as an alias for backward compatibi
 
 | Method | Description |
 |--------|-------------|
+| `Paperang.auto_detect(transport=None)` | Connect and resolve the model automatically (USB ID + `CMD_GET_MODEL`); returns a connected printer |
 | `connect()` | Connect to printer (default: USB; pass `transport=BtTransport()` for Bluetooth) |
 | `print_text(text, font_size, heat_density, vertical)` | Print text (CJK requires `[cjk]` extra; `vertical=True` rotates 90°) |
 | `print_image(path, heat_density, feed_before, feed_after, threshold, brightness, contrast, vertical)` | Print image (supports `vertical=True` for 90° rotation) |

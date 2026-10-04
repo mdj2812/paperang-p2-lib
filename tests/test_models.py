@@ -329,6 +329,70 @@ class TestModelFiles:
         with pytest.raises(InvalidModelError, match="not valid JSON"):
             load_model_file(path)
 
+    def test_bluetooth_metadata_is_loaded(self, tmp_path):
+        path = write_model(tmp_path, {
+            "name": "BT Model",
+            "vid": 0x4348,
+            "pids": [0x5599],
+            "print_width": 384,
+            "transports": ["usb", "spp"],
+            "bt_name_prefixes": ["Paperang_X"],
+            "bt_service_uuids": ["0000fee7-0000-1000-8000-00805F9B34FB"],
+            "bt_rfcomm_channel": 3,
+        })
+        model = get_model(path)
+        assert model.supports_usb and model.supports_bluetooth
+        assert model.bt_name_prefixes == ("paperang_x",)
+        assert model.bt_service_uuids == ("0000fee7-0000-1000-8000-00805f9b34fb",)
+        assert model.bt_rfcomm_channel == 3
+
+    def test_defaults_when_metadata_is_absent(self, tmp_path):
+        path = write_model(tmp_path, {
+            "name": "Minimal",
+            "vid": 1,
+            "pids": [2],
+            "print_width": 384,
+        })
+        model = get_model(path)
+        assert model.transports == ("usb", "spp")
+        assert model.bt_name_prefixes == ()
+        assert model.bt_service_uuids == ()
+        assert model.bt_rfcomm_channel is None
+
+    def test_unsupported_transport_rejected(self, tmp_path):
+        path = write_model(tmp_path, {
+            "name": "X",
+            "vid": 1,
+            "pids": [2],
+            "print_width": 384,
+            "transports": ["usb", "ble"],
+        })
+        with pytest.raises(InvalidModelError, match="unsupported transport"):
+            load_model_file(path)
+
+    def test_bad_service_uuid_rejected(self, tmp_path):
+        path = write_model(tmp_path, {
+            "name": "X",
+            "vid": 1,
+            "pids": [2],
+            "print_width": 384,
+            "bt_service_uuids": ["fee7"],
+        })
+        with pytest.raises(InvalidModelError, match="128-bit UUID"):
+            load_model_file(path)
+
+    @pytest.mark.parametrize("channel", [0, 31, -1])
+    def test_bad_rfcomm_channel_rejected(self, tmp_path, channel):
+        path = write_model(tmp_path, {
+            "name": "X",
+            "vid": 1,
+            "pids": [2],
+            "print_width": 384,
+            "bt_rfcomm_channel": channel,
+        })
+        with pytest.raises(InvalidModelError, match="between 1 and 30"):
+            load_model_file(path)
+
     def test_missing_file_rejected(self, tmp_path):
         with pytest.raises(InvalidModelError, match="cannot read"):
             load_model_file(str(tmp_path / "nope.json"))

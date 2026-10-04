@@ -218,6 +218,43 @@ class TestFindRfcommChannel:
     """Tests for SDP channel lookup."""
 
     @patch("paperang.transport._bt.subprocess.run")
+    def test_finds_channel_from_standard_spp(self, mock_run):
+        """A model that only advertises SPP must still connect."""
+        mock_proc = MagicMock()
+        mock_proc.stdout = (
+            "Service Name: Serial Port\n"
+            "Service RecHandle: 0x10001\n"
+            "Service Class ID List:\n"
+            "  UUID 16: Serial Port (00001101-0000-1000-8000-00805f9b34fb)\n"
+            "Protocol Descriptor List:\n"
+            '  "RFCOMM" (0x0003)\n'
+            "    Channel: 4\n"
+        )
+        mock_proc.stderr = ""
+        mock_run.return_value = mock_proc
+
+        from paperang.transport._bt import _find_rfcomm_channel
+        assert _find_rfcomm_channel("00:15:83:EB:05:17") == 4
+
+    @patch("paperang.transport._bt.subprocess.run")
+    def test_vendor_uuid_wins_over_spp(self, mock_run):
+        """Printers advertising both keep the channel they used before."""
+        mock_proc = MagicMock()
+        mock_proc.stdout = (
+            "Service Name: Paperang\n"
+            "  UUID 128: 0000fee7-0000-1000-8000-00805f9b34fb\n"
+            "    Channel: 5\n"
+            "Service Name: Serial Port\n"
+            "  UUID 16: Serial Port (00001101-0000-1000-8000-00805f9b34fb)\n"
+            "    Channel: 7\n"
+        )
+        mock_proc.stderr = ""
+        mock_run.return_value = mock_proc
+
+        from paperang.transport._bt import _find_rfcomm_channel
+        assert _find_rfcomm_channel("00:15:83:EB:05:17") == 5
+
+    @patch("paperang.transport._bt.subprocess.run")
     def test_finds_channel_from_sdptool(self, mock_run):
         mock_proc = MagicMock()
         mock_proc.stdout = (
@@ -402,3 +439,91 @@ class TestBtTransportConnect:
             t.disconnect()
 
         assert t._sock is None
+
+
+class TestModelAwareBluetooth:
+    """Model metadata drives discovery and channel selection."""
+
+    def test_module_constants_are_the_union_of_models(self):
+        from paperang.models import bt_name_prefixes, bt_service_uuids
+        from paperang.transport import PAPERANG_BT_NAMES, PAPERANG_SERVICE_UUID
+        from paperang.transport._bt import PAPERANG_SERVICE_UUIDS
+
+        assert PAPERANG_BT_NAMES == set(bt_name_prefixes())
+        assert PAPERANG_SERVICE_UUIDS == bt_service_uuids()
+        assert PAPERANG_SERVICE_UUID in PAPERANG_SERVICE_UUIDS
+
+    def test_p2_declares_its_bluetooth_metadata(self):
+        from paperang.models import get_model
+
+        p2 = get_model("p2")
+        assert p2.supports_usb
+        assert p2.supports_bluetooth
+        assert "paperang" in p2.bt_name_prefixes
+        assert p2.bt_rfcomm_channel is None
+
+    def test_model_prefixes_drive_discovery(self):
+        with patch("paperang.transport._bt.subprocess.run") as mock_run:
+            mock_run.return_value.stdout = (
+                "[NEW] Device AA:BB:CC:DD:EE:FF CustomPrinter_1\n"
+                "[NEW] Device 11:22:33:44:55:66 Paperang_P2\n"
+            )
+            mock_run.return_value.stderr = ""
+
+            from paperang.transport._bt import _scan_devices
+
+            only_custom = _scan_devices(timeout=1, name_prefixes=("customprinter",))
+            both = _scan_devices(
+                timeout=1, name_prefixes=("customprinter", "paperang")
+            )
+
+        assert only_custom == [("AA:BB:CC:DD:EE:FF", "CustomPrinter_1")]
+        assert len(both) == 2
+
+    def test_service_uuid_override(self):
+        from paperang.transport._bt import check_paperang_uuid
+
+        info = MagicMock()
+        info.stdout = "UUID: Vendor specific (11112222-3333-4444-5555-666677778888)\n"
+        info.stderr = ""
+
+        with patch("paperang.transport._bt.subprocess.run", return_value=info):
+            assert check_paperang_uuid(
+                "AA:BB:CC:DD:EE:FF",
+                ("11112222-3333-4444-5555-666677778888",),
+            )
+            assert not check_paperang_uuid("AA:BB:CC:DD:EE:FF")
+
+    def test_model_channel_is_used_without_probing(self):
+        from paperang.models import PrinterModel
+
+        model = PrinterModel(
+            name="X", vid=0x4348, pids=(0x5599,), print_width=384,
+            bt_rfcomm_channel=3,
+        )
+        mock_mod = _bt_socket_mock()
+        mock_sock = mock_mod.socket.return_value
+
+        with (
+            patch("paperang.transport._bt._find_rfcomm_channel") as probe,
+            patch("paperang.transport._bt.socket", mock_mod),
+        ):
+            transport = BtTransport(address="00:15:83:EB:05:17", model=model)
+            transport.connect()
+
+        probe.assert_not_called()
+        mock_sock.connect.assert_called_once_with(("00:15:83:EB:05:17", 3))
+
+    def test_scan_without_model_uses_the_union(self):
+        with (
+            patch(
+                "paperang.transport._bt._scan_devices",
+                return_value=[("00:15:83:EB:05:17", "Paperang_P2")],
+            ) as scan,
+            patch("paperang.transport._bt.socket", _bt_socket_mock()),
+        ):
+            BtTransport().connect()
+
+        # No model given: discovery falls back to every registered model.
+        prefixes = scan.call_args.kwargs["name_prefixes"]
+        assert "paperang" in prefixes

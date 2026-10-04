@@ -9,7 +9,12 @@ from ._base import Transport
 class UsbTransport(Transport):
     """USB transport for Paperang printers (vendor-specific VID/PID)."""
 
-    def __init__(self, vid: int | None = None, pid: int | None = None) -> None:
+    def __init__(
+        self,
+        vid: int | None = None,
+        pid: int | None = None,
+        pids=None,
+    ) -> None:
         """Initialize USB transport with vendor/product IDs.
 
         Args:
@@ -17,13 +22,19 @@ class UsbTransport(Transport):
                 (Paperang: 0x4348).
             pid: USB Product ID.  Defaults to the default model's PID
                 (Paperang P2: 0x5584).
+            pids: Several product IDs to try, in order.  Used when the model is
+                not known yet; :attr:`matched_pid` reports which one answered.
+                Takes precedence over ``pid``.
         """
-        if vid is None or pid is None:
-            default_model = get_model()
-            vid = default_model.vid if vid is None else vid
-            pid = default_model.pid if pid is None else pid
+        default_model = get_model()
+        if vid is None:
+            vid = default_model.vid
+        if pids is None:
+            pids = (default_model.pid if pid is None else pid,)
         self.vid = vid
-        self.pid = pid
+        self.pids = tuple(pids)
+        self.pid = self.pids[0]
+        self.matched_pid = None
         self._dev = None
         self._ep_out = None
         self._ep_in = None
@@ -35,11 +46,18 @@ class UsbTransport(Transport):
         import usb.core
         import usb.util
 
-        self._dev = usb.core.find(idVendor=self.vid, idProduct=self.pid)
+        self._dev = None
+        self.matched_pid = None
+        for pid in self.pids:
+            self._dev = usb.core.find(idVendor=self.vid, idProduct=pid)
+            if self._dev is not None:
+                self.matched_pid = pid
+                break
+
         if self._dev is None:
+            wanted = "/".join(f"0x{pid:04x}" for pid in self.pids)
             raise RuntimeError(
-                f"Paperang printer not found (VID=0x{self.vid:04x}, "
-                f"PID=0x{self.pid:04x})"
+                f"Paperang printer not found (VID=0x{self.vid:04x}, PID={wanted})"
             )
 
         if self._dev.is_kernel_driver_active(0):
