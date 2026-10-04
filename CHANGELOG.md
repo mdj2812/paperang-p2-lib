@@ -3,6 +3,17 @@
 ## [Unreleased]
 
 ### Added
+- **Per-model Bluetooth metadata** — `transports`, `bt_name_prefixes`,
+  `bt_service_uuids`, and an optional `bt_rfcomm_channel` in model JSON files.
+- `Paperang.auto_detect()` connects to a printer and resolves its model from
+  the USB ID and the string reported by `CMD_GET_MODEL`, returning a connected
+  printer. On conflict the reported model wins, with a warning.
+- `resolve_model()`, `usb_pids()`, `models_for_usb()`, `bt_name_prefixes()` and
+  `bt_service_uuids()` in `paperang.models`.
+- `UsbTransport` accepts several `pids` and reports which one answered as
+  `matched_pid`.
+- `paperang.transport` also exports `PAPERANG_SERVICE_UUIDS` (the union across
+  registered models).
 - `Paperang` is now the generic high-level class name. `PaperangP2` is kept as
   a subclass alias, so existing imports (including `paperang-hacs` and
   `paperang-p2-usb`) behave identically (#23).
@@ -23,6 +34,11 @@
   `PAPERANG_BT_NAMES`, and `PAPERANG_SERVICE_UUID`.
 
 ### Changed
+- Bluetooth discovery and RFCOMM channel lookup are model-agnostic. Channel
+  lookup probes the vendor service UUIDs first — so printers that advertise
+  both keep the channel they used before — then the standard SPP profile, then
+  falls back to channel 1. `PAPERANG_BT_NAMES` and `PAPERANG_SERVICE_UUID` are
+  now derived from the model table rather than P2-only literals.
 - Print geometry is taken from the resolved model instead of module-level
   constants: image scaling, the vertical canvas, QR sizing and centring,
   pickup codes, and the pattern / heat-density test pages.

@@ -4,8 +4,10 @@ Image rendering, text layout, QR codes, pickup codes, and test patterns.
 Built on top of :class:`paperang.printer.PaperangPrinter`.
 """
 
+import logging
 import os
 import random
+
 from PIL import Image, ImageDraw, ImageFont
 
 from ..constants import (
@@ -16,8 +18,11 @@ from ..constants import (
     DEFAULT_FEED_BEFORE,
     DEFAULT_HEAT_DENSITY,
 )
+from ..models import get_model, resolve_model, usb_pids
+from ..transport import Transport, UsbTransport
 from ._base import PaperangPrinter
-from ..transport import Transport
+
+log = logging.getLogger(__name__)
 
 
 class Paperang(PaperangPrinter):
@@ -35,6 +40,48 @@ class Paperang(PaperangPrinter):
         self.font_paths_text = font_paths_text
         self.font_paths_pickup = font_paths_pickup
         self.profiles_path = profiles_path
+
+    @classmethod
+    def auto_detect(cls, transport=None, **kwargs):
+        """Connect to a printer and identify its model automatically.
+
+        The transport is connected first and the model resolved afterwards,
+        because classic Bluetooth carries no VID/PID: discovery and RFCOMM
+        channel probing are model-agnostic, and the model is read from
+        ``CMD_GET_MODEL`` once the link is up.  Over USB the product ID is
+        matched first and the reported name is used to confirm it.
+
+        Args:
+            transport: Transport to use.  Defaults to USB, searching every
+                registered model's product ID.
+            **kwargs: Passed to the constructor, e.g. font paths.
+
+        Returns:
+            A connected :class:`Paperang` whose ``printer_model`` is the
+            resolved model.
+
+        Raises:
+            UnknownModelError: The device could not be identified — pass
+                ``model=`` explicitly, or add a model JSON file.
+        """
+        if transport is None:
+            transport = UsbTransport(vid=get_model().vid, pids=usb_pids())
+
+        transport.connect()
+
+        # Sending the GET command does not depend on the model, so probe with
+        # the default and re-resolve once the device has answered.
+        reported = PaperangPrinter(transport).get_model()
+        model = resolve_model(
+            vid=getattr(transport, "vid", None),
+            pid=getattr(transport, "matched_pid", None)
+            or getattr(transport, "pid", None),
+            reported_name=reported,
+        )
+        log.info(
+            "Auto-detected %s over %s", model.name, type(transport).__name__
+        )
+        return cls(transport=transport, model=model, **kwargs)
 
     # ── High-level print functions ──────────────────────────────
 

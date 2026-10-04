@@ -101,6 +101,55 @@ class TestUsbConnect:
             mock_util.stop()
 
 
+class TestUsbMultiPid:
+    """Searching several product IDs when the model is not known yet."""
+
+    def test_defaults_to_a_single_pid(self):
+        t = UsbTransport()
+        assert t.pids == (0x5584,)
+        assert t.matched_pid is None
+
+    def test_explicit_pids_take_precedence(self):
+        t = UsbTransport(vid=0x4348, pid=0x1111, pids=(0x5584, 0x5585))
+        assert t.pids == (0x5584, 0x5585)
+        assert t.pid == 0x5584
+
+    def test_matched_pid_reports_which_one_answered(self):
+        dev = MagicMock()
+        dev.is_kernel_driver_active.return_value = False
+        cfg = MagicMock()
+        cfg.__getitem__.return_value = (MagicMock(),)
+        dev.get_active_configuration.return_value = cfg
+
+        seen = []
+
+        def fake_find(idVendor=None, idProduct=None):
+            seen.append(idProduct)
+            return dev if idProduct == 0x5585 else None
+
+        transport = UsbTransport(vid=0x4348, pids=(0x5584, 0x5585))
+        mock_find = patch("usb.core.find", side_effect=fake_find)
+        mock_util = _mock_usb_endpoints()
+        mock_find.start()
+        try:
+            assert transport.connect() is True
+            assert seen == [0x5584, 0x5585]
+            assert transport.matched_pid == 0x5585
+        finally:
+            mock_find.stop()
+            mock_util.stop()
+
+    def test_not_found_lists_every_pid(self):
+        mock_find = patch("usb.core.find", return_value=None)
+        mock_find.start()
+        try:
+            transport = UsbTransport(vid=0x4348, pids=(0x5584, 0x5585))
+            with pytest.raises(RuntimeError, match="0x5584/0x5585"):
+                transport.connect()
+        finally:
+            mock_find.stop()
+
+
 class TestUsbSendRecv:
     """send() / recv() over a mocked device."""
 
