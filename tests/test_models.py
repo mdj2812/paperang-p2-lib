@@ -36,9 +36,6 @@ MODEL_384 = PrinterModel(
     vid=0x4348,
     pids=(0x5585,),
     print_width=384,
-    heat_density=60,
-    feed_before=30,
-    feed_after=200,
 )
 
 
@@ -229,7 +226,7 @@ class TestModelFiles:
         assert get_model(hex_path).vid == get_model(dec_path).vid == 0x4348
         assert get_model(hex_path).pids == get_model(dec_path).pids == (0x5585,)
 
-    def test_defaults_are_applied(self, tmp_path):
+    def test_minimal_file_only_needs_identity_and_geometry(self, tmp_path):
         path = write_model(tmp_path, {
             "name": "Minimal",
             "vid": 1,
@@ -237,10 +234,24 @@ class TestModelFiles:
             "print_width": 384,
         })
         model = get_model(path)
-        assert model.heat_density == 75
-        assert model.feed_before == 50
-        assert model.feed_after == 300
+        assert model.name == "Minimal"
+        assert model.line_bytes == 48
         assert model.aliases == ()
+
+    @pytest.mark.parametrize(
+        "field", ["heat_density", "feed_before", "feed_after"]
+    )
+    def test_print_settings_are_not_model_data(self, tmp_path, field):
+        """Density and feed are job-level settings, not model properties."""
+        path = write_model(tmp_path, {
+            "name": "X",
+            "vid": 1,
+            "pids": [2],
+            "print_width": 384,
+            field: 75,
+        })
+        with pytest.raises(InvalidModelError, match="unknown field"):
+            load_model_file(path)
 
     def test_aliases_from_file(self, tmp_path):
         path = write_model(tmp_path, {

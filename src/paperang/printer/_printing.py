@@ -12,6 +12,9 @@ from ..constants import (
     BUNDLED_FONTS_TEXT,
     BUNDLED_FONTS_PICKUP,
     BUNDLED_FONTS_CJK,
+    DEFAULT_FEED_AFTER,
+    DEFAULT_FEED_BEFORE,
+    DEFAULT_HEAT_DENSITY,
 )
 from ._base import PaperangPrinter
 from ..transport import Transport
@@ -42,12 +45,12 @@ class PaperangP2(PaperangPrinter):
 
         Args:
             image_path: Local file path or HTTP(S) URL to a PNG/JPEG image.
-            heat_density: 0-100 thermal print density.  Defaults to the
-                model's heat density.
+            heat_density: 0-100 thermal print density.  Defaults to
+                DEFAULT_HEAT_DENSITY; a print profile usually overrides it.
             feed_before: Lines of paper feed before printing.  Defaults to
-                the model's value.
-            feed_after: Lines of paper feed after printing.  Defaults to the
-                model's value.
+                DEFAULT_FEED_BEFORE.
+            feed_after: Lines of paper feed after printing.  Defaults to
+                DEFAULT_FEED_AFTER.
             threshold: Binarization threshold (0-255).
             brightness: Brightness multiplier (1.0 = unchanged).
             contrast: Contrast adjustment (1.0 = unchanged).
@@ -56,11 +59,11 @@ class PaperangP2(PaperangPrinter):
                 Useful for labels and vertical receipts.
         """
         if heat_density is None:
-            heat_density = self.printer_model.heat_density
+            heat_density = DEFAULT_HEAT_DENSITY
         if feed_before is None:
-            feed_before = self.printer_model.feed_before
+            feed_before = DEFAULT_FEED_BEFORE
         if feed_after is None:
-            feed_after = self.printer_model.feed_after
+            feed_after = DEFAULT_FEED_AFTER
 
         if isinstance(image_path, str) and image_path.startswith(('http://', 'https://')):
             from io import BytesIO
@@ -145,14 +148,14 @@ class PaperangP2(PaperangPrinter):
         """Print text. CJK support requires installing with [cjk] extra.
 
         Args:
-            heat_density: 0-100 thermal print density.  Defaults to the
-                model's heat density.
+            heat_density: 0-100 thermal print density.  Defaults to
+                DEFAULT_HEAT_DENSITY; a print profile usually overrides it.
             vertical: If True, text is rotated 90° clockwise to print
                 along the paper strip length. Larger font sizes (48–96)
                 produce dramatic vertical labels.
         """
         if heat_density is None:
-            heat_density = self.printer_model.heat_density
+            heat_density = DEFAULT_HEAT_DENSITY
 
         font_paths = self._get_text_fonts()
         font = self._load_font(font_paths, font_size)
@@ -189,12 +192,12 @@ class PaperangP2(PaperangPrinter):
         """Print QR code.
 
         Args:
-            heat_density: 0-100 thermal print density.  Defaults to the
-                model's heat density.
+            heat_density: 0-100 thermal print density.  Defaults to
+                DEFAULT_HEAT_DENSITY; a print profile usually overrides it.
             vertical: If True, rotate 90° clockwise for vertical printing.
         """
         if heat_density is None:
-            heat_density = self.printer_model.heat_density
+            heat_density = DEFAULT_HEAT_DENSITY
 
         try:
             import qrcode
@@ -316,10 +319,10 @@ class PaperangP2(PaperangPrinter):
             data.extend(row)
 
         self.set_paper_type(0)
-        self.set_heat_density(self.printer_model.heat_density)
-        self.feed(self.printer_model.feed_before)
+        self.set_heat_density(DEFAULT_HEAT_DENSITY)
+        self.feed(DEFAULT_FEED_BEFORE)
         self.print_bitmap(bytes(data), width_bytes)
-        self.feed(self.printer_model.feed_after)
+        self.feed(DEFAULT_FEED_AFTER)
         return True
 
     def print_heat_density_test(self):
@@ -343,8 +346,8 @@ class PaperangP2(PaperangPrinter):
             self.print_bitmap(bytes(data), width_bytes)
             self.feed(50)
 
-        self.set_heat_density(self.printer_model.heat_density)
-        self.feed(self.printer_model.feed_after)
+        self.set_heat_density(DEFAULT_HEAT_DENSITY)
+        self.feed(DEFAULT_FEED_AFTER)
         return True
 
     # ── Helpers ─────────────────────────────────────────────────

@@ -4,12 +4,12 @@
 
 ### Added
 - **Hardware model descriptors** — new `paperang.models` package. Each model
-  ships as a JSON file (`paperang/models/p2.json`) holding the parameters that
-  differ between Paperang printers: USB VID/PIDs, print-head width, default
-  heat density and paper feed, and name aliases. `PrinterModel` is the runtime
-  type and the only place the data is validated, so the files never restate
-  derived values such as `line_bytes`. IDs accept both JSON integers and
-  strings like `"0x5584"`, since JSON has no hex literals.
+  ships as a JSON file (`paperang/models/p2.json`) describing what the hardware
+  *is*: model name, USB VID/PIDs, print-head width, and name aliases.
+  `PrinterModel` is the runtime type and the only place the data is validated,
+  so the files never restate derived values such as `line_bytes`. IDs accept
+  both JSON integers and strings like `"0x5584"`, since JSON has no hex
+  literals.
 - `get_model()`, `list_models()`, `load_model_file()`, `MODELS`,
   `UnknownModelError`, and `InvalidModelError`. `get_model()` accepts a
   registered name or alias, a path to a model JSON file, or a `PrinterModel`
@@ -23,8 +23,11 @@
 - Print geometry is taken from the resolved model instead of module-level
   constants: image scaling, the vertical canvas, QR sizing and centring,
   pickup codes, and the pattern / heat-density test pages.
-- `heat_density`, `feed_before`, and `feed_after` default to the model's values
-  when not passed explicitly. For the P2 these are the previous defaults.
+- `heat_density`, `feed_before`, and `feed_after` keep their previous defaults
+  from `constants.py`. They are job-level print settings rather than hardware
+  properties, so they are deliberately not part of a model definition: a print
+  profile or an explicit argument overrides them, and a model file that sets
+  them is rejected as having an unknown field.
 - `print_bitmap()` defaults `width_bytes` to the model's line width and raises
   a clear error for a width that cannot fit a row in one packet.
 - `print_pattern_test()` derives its column blocks from the row width instead

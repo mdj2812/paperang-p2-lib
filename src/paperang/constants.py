@@ -24,14 +24,15 @@ LINE_BYTES = _P2.line_bytes     # bytes per line
 PAPER_TYPE_NORMAL = 0
 PAPER_TYPE_CONTINUOUS = 1
 
-# Default print settings (Paperang P2)
-DEFAULT_HEAT_DENSITY = _P2.heat_density
+# Default print settings.  These are job-level values, not model properties:
+# a print profile (load_profiles()) or an explicit call argument overrides them.
+DEFAULT_HEAT_DENSITY = 75
 DEFAULT_THRESHOLD = 128
 DEFAULT_BRIGHTNESS = 1.0
 DEFAULT_CONTRAST = 1.0
 DEFAULT_FONT_SIZE = 24
-DEFAULT_FEED_BEFORE = _P2.feed_before
-DEFAULT_FEED_AFTER = _P2.feed_after
+DEFAULT_FEED_BEFORE = 50
+DEFAULT_FEED_AFTER = 300
 
 # Bundled font files (relative to package directory)
 # Latin fonts — always included

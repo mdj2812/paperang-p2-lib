@@ -47,15 +47,18 @@ def _as_int(value, field_name: str) -> int:
 class PrinterModel:
     """Parameters of a Paperang hardware model.
 
+    A model describes what the hardware *is*: identity (name, USB ids, aliases)
+    and geometry (print-head width).  Print settings such as heat density and
+    paper feed are job-level values — they belong to the print profiles
+    (:func:`paperang.printer.load_profiles`) or to the individual call, and
+    deliberately do not live here.
+
     Args:
         name: Human-readable model name, e.g. ``"P2"``.
         vid: USB vendor ID.
         pids: USB product IDs, primary first.
         print_width: Print-head width in dots.  Must be a positive multiple
             of 8, because the protocol sends one byte per 8 dots.
-        heat_density: Default thermal density (0-100).
-        feed_before: Default paper feed in lines before printing.
-        feed_after: Default paper feed in lines after printing.
         aliases: Extra spellings this model is known by, e.g. names reported
             by ``CMD_GET_MODEL`` or used in the wild.  Matching ignores case
             and any non-alphanumeric characters, so ``"paperang_p2"``,
@@ -66,9 +69,6 @@ class PrinterModel:
     vid: int
     pids: tuple[int, ...]
     print_width: int
-    heat_density: int = 75
-    feed_before: int = 50
-    feed_after: int = 300
     aliases: tuple[str, ...] = ()
 
     def __post_init__(self):
@@ -133,9 +133,6 @@ class PrinterModel:
                 vid=_as_int(data["vid"], "vid"),
                 pids=tuple(_as_int(p, "pids") for p in pids),
                 print_width=_as_int(data["print_width"], "print_width"),
-                heat_density=_as_int(data.get("heat_density", 75), "heat_density"),
-                feed_before=_as_int(data.get("feed_before", 50), "feed_before"),
-                feed_after=_as_int(data.get("feed_after", 300), "feed_after"),
                 aliases=tuple(str(a) for a in aliases),
             )
         except InvalidModelError:
