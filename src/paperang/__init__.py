@@ -76,7 +76,7 @@ from .protocol import (
     CMD_PRINT_DEFAULT_PARA,
     CMD_DISCONNECT_BT,
 )
-from .printer import PaperangPrinter, PaperangP2, load_profiles, list_profiles
+from .printer import Paperang, PaperangP2, PaperangPrinter, load_profiles, list_profiles
 from .transport import Transport
 
 __all__ = [
@@ -103,7 +103,7 @@ __all__ = [
     "CMD_PRINT_TEST", "CMD_PRINT_DEFAULT_PARA",
     "CMD_DISCONNECT_BT",
     # Classes
-    "PaperangPrinter", "PaperangP2",
+    "PaperangPrinter", "Paperang", "PaperangP2",
     # Transport
     "Transport",
     # Profiles

@@ -20,11 +20,11 @@ from ._base import PaperangPrinter
 from ..transport import Transport
 
 
-class PaperangP2(PaperangPrinter):
+class Paperang(PaperangPrinter):
     """High-level Paperang printer with image/text/QR support.
 
-    Despite the historical name this class is not P2-specific: pass ``model``
-    to drive another Paperang model (see :mod:`paperang.models`).  Print
+    Pass ``model`` to drive a specific Paperang model (see
+    :mod:`paperang.models`); with no argument it uses the default model.  Print
     geometry is read from the resolved model, never from module constants.
     """
 
@@ -359,3 +359,13 @@ class PaperangP2(PaperangPrinter):
             if os.path.exists(fp):
                 return ImageFont.truetype(fp, size)
         return ImageFont.load_default()
+
+
+class PaperangP2(Paperang):
+    """The historical name for :class:`Paperang`, kept indefinitely.
+
+    Behaviourally identical: with no ``model`` argument it uses the default
+    (P2) model.  The name is retained because existing code imports it —
+    including the Home Assistant integration — but new code should use
+    :class:`Paperang`.
+    """

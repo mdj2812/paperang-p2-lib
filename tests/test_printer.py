@@ -6,7 +6,7 @@ from paperang.constants import (
     VENDOR_ID, PRODUCT_ID, PRINT_WIDTH, LINE_BYTES,
     BUNDLED_FONTS_TEXT, BUNDLED_FONTS_PICKUP, BUNDLED_FONTS_CJK,
 )
-from paperang.printer import PaperangPrinter, PaperangP2
+from paperang.printer import Paperang, PaperangP2, PaperangPrinter
 
 
 class TestConstants:
@@ -93,6 +93,39 @@ class TestClassHierarchy:
 
     def test_p2_is_printer(self):
         assert issubclass(PaperangP2, PaperangPrinter)
+
+    def test_paperang_is_printer(self):
+        assert issubclass(Paperang, PaperangPrinter)
+
+    def test_paperangp2_is_an_alias(self):
+        """The historical name stays a subclass of the generic class."""
+        assert issubclass(PaperangP2, Paperang)
+
+    def test_both_names_are_equivalent(self):
+        generic = Paperang()
+        historical = PaperangP2()
+        assert generic.print_width == historical.print_width == 576
+        assert generic.line_bytes == historical.line_bytes == 72
+
+    def test_both_names_accept_a_model(self):
+        from paperang.models import get_model
+        from paperang.transport import Transport
+
+        class DummyTransport(Transport):
+            def connect(self): return True
+            def send(self, packet): pass
+            def recv(self, timeout=1000): return b""
+            def disconnect(self): pass
+
+        for cls in (Paperang, PaperangP2):
+            printer = cls(DummyTransport(), model="p2")
+            assert printer.printer_model is get_model("p2")
+
+    def test_compat_module_exports_both(self):
+        from paperang import core
+
+        assert core.Paperang is Paperang
+        assert core.PaperangP2 is PaperangP2
 
     def test_printer_methods(self):
         p = PaperangPrinter()

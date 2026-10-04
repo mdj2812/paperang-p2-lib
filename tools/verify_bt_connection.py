@@ -35,9 +35,9 @@ transport.connect()
 print("   ✓ Connected!")
 
 # ── Quick protocol test ─────────────────────────────────────
-from paperang import PaperangP2
+from paperang import Paperang
 
-printer = PaperangP2(transport=transport)
+printer = Paperang(transport=transport)
 print(f"   Battery: {printer.get_battery()}")
 time.sleep(0.1)
 print(f"   Version: {printer.get_version()}")
