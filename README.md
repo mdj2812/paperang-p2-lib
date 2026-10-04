@@ -41,9 +41,9 @@ pip install paperang-p2-lib[cjk]
 ### USB
 
 ```python
-from paperang import PaperangP2
+from paperang import Paperang
 
-printer = PaperangP2()
+printer = Paperang()
 printer.connect()
 
 # Print text
@@ -79,12 +79,12 @@ model   = printer.get_model()
 
 ```python
 from paperang.transport import BtTransport
-from paperang import PaperangP2
+from paperang import Paperang
 
 bt = BtTransport()                       # auto-scan via Bluetooth SDP
 # bt = BtTransport(address="00:15:83:EB:05:17")  # or specify MAC
 
-printer = PaperangP2(transport=bt)
+printer = Paperang(transport=bt)
 printer.connect()
 
 # All print methods work the same way
@@ -102,9 +102,11 @@ printer.get_battery()
 | `UsbTransport` | USB transport (default when no transport is passed) |
 | `BtTransport` | Bluetooth SPP/RFCOMM transport |
 
-### `PaperangP2` Class (high-level)
+### `Paperang` Class (high-level)
 
 Inherits from `PaperangPrinter`. Adds image/text/QR rendering on top of low-level commands.
+Pass `model=` (a name from `paperang.list_models()` or a path to a model JSON file) to drive a
+different printer model. `PaperangP2` is kept as an alias for backward compatibility.
 
 | Method | Description |
 |--------|-------------|
@@ -169,7 +171,7 @@ paperang/
 ├── protocol/           — CRC, pack/unpack, 48 command constants (CMD_*)
 ├── printer/            — Printer / application layer
 │   ├── _base.py        — PaperangPrinter (low-level commands)
-│   ├── _printing.py    — PaperangP2 (high-level: image/text/QR rendering)
+│   ├── _printing.py    — Paperang (high-level: image/text/QR rendering)
 │   └── profiles.py     — load_profiles(), list_profiles()
 ├── constants.py        — USB IDs, dimensions, defaults, font paths
 └── core.py             — Compatibility re-exports

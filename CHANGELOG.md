@@ -3,6 +3,9 @@
 ## [Unreleased]
 
 ### Added
+- `Paperang` is now the generic high-level class name. `PaperangP2` is kept as
+  a subclass alias, so existing imports (including `paperang-hacs` and
+  `paperang-p2-usb`) behave identically (#23).
 - **Hardware model descriptors** — new `paperang.models` package. Each model
   ships as a JSON file (`paperang/models/p2.json`) describing what the hardware
   *is*: model name, USB VID/PIDs, print-head width, and name aliases.
