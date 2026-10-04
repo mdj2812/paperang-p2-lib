@@ -13,14 +13,18 @@ def _read(*parts):
 
 
 def test_every_model_is_documented():
-    """A new model file must be added to the README table too."""
-    readme = _read("README.md")
+    """A new model file must be added to the models table too."""
+    models_doc = _read("MODELS.md")
     for key, model in MODELS.items():
-        assert model.name in readme, f"model {key!r} is missing from README.md"
+        assert model.name in models_doc, f"model {key!r} is missing from MODELS.md"
         for pid in model.pids:
-            assert f"0x{pid:04x}" in readme, (
-                f"PID 0x{pid:04x} of model {key!r} is missing from README.md"
+            assert f"0x{pid:04x}" in models_doc, (
+                f"PID 0x{pid:04x} of model {key!r} is missing from MODELS.md"
             )
+
+
+def test_readme_points_at_the_models_document():
+    assert "MODELS.md" in _read("README.md")
 
 
 def test_adding_a_model_guide_exists():
