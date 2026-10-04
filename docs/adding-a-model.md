@@ -112,7 +112,12 @@ below changes.
    ```
 
 4. Open a pull request referencing the model issue, with the collected evidence
-   and, ideally, a photo of the test print.
+   and, ideally, a photo of the test print. There is a template for model
+   contributions — pick `adding_a_model.md`, or open it directly:
+
+   ```
+   https://github.com/mdj2812/paperang-p2-lib/compare/main...YOUR-BRANCH?template=adding_a_model.md&expand=1
+   ```
 
 ## Verification checklist
 
