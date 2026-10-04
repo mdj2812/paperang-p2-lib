@@ -6,13 +6,17 @@
 [![coverage](https://raw.githubusercontent.com/mdj2812/paperang-p2-lib/badges/coverage.svg)](https://github.com/mdj2812/paperang-p2-lib/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 
-Python library for Paperang P2 thermal printer (USB + Bluetooth).
+Python library for Paperang thermal printers (USB + classic Bluetooth SPP).
+
+Works across the Paperang family: model identity and print-head geometry come
+from per-model JSON descriptors, and everything else — command set, CRC, packet
+framing — is shared.
 
 Based on [hurui200320/java-paperang-p2-usb](https://github.com/hurui200320/java-paperang-p2-usb) protocol.
 
 ## Features
 
-- USB and Bluetooth connection to Paperang P2 printer
+- USB and classic Bluetooth SPP connection, across the Paperang model family
 - Text printing (CJK support via optional `[cjk]` extra)
 - Image printing with adjustable brightness/contrast/threshold
 - QR code generation and printing
@@ -22,6 +26,26 @@ Based on [hurui200320/java-paperang-p2-usb](https://github.com/hurui200320/java-
 - Pattern test and heat density test
 - Full protocol command coverage (48 commands)
 - Status, battery, voltage, temperature reading
+
+## Supported models
+
+| Model | USB PID | Print head | Transports | Status |
+|-------|---------|------------|------------|--------|
+| P2 | `0x5584` | 576 dots (72 bytes/row) | USB, Bluetooth SPP | Verified |
+
+All models share vendor ID `0x4348`. Model metadata lives in
+[`src/paperang/models/`](src/paperang/models/) — one JSON file per model — and
+`Paperang.auto_detect()` resolves the model from the USB product ID and the
+string reported by `CMD_GET_MODEL`.
+
+Pending hardware verification (tracked in
+[#22](https://github.com/mdj2812/paperang-p2-lib/issues/22)): D1 / ZYB-D1,
+USB PID `0x5585`, 384 dots. It is reported to print after only the PID and
+width are changed, but Bluetooth and layout still need a real device.
+
+Adding a model is adding a JSON file — see
+[docs/adding-a-model.md](docs/adding-a-model.md). Note that a model must speak
+the same protocol; a matching print-head width alone is not enough.
 
 ## Installation
 
@@ -174,6 +198,7 @@ paperang/
 │   ├── _base.py        — PaperangPrinter (low-level commands)
 │   ├── _printing.py    — Paperang (high-level: image/text/QR rendering)
 │   └── profiles.py     — load_profiles(), list_profiles()
+├── models/             — Per-model JSON descriptors (identity + geometry)
 ├── constants.py        — USB IDs, dimensions, defaults, font paths
 └── core.py             — Compatibility re-exports
 ```
@@ -212,9 +237,9 @@ will render as boxes or missing glyph symbols.
 ## Protocol Details
 
 - **Vendor ID:** 0x4348
-- **Product ID:** 0x5584
-- **Print width:** 576 pixels (72 bytes/line)
-- **Packet size:** 14 lines per packet (1008 bytes)
+- **Product ID / print width:** per model — see [Supported models](#supported-models)
+- **Packet size:** as many rows as fit in 1023 bytes (14 rows for the P2's
+  72-byte rows, 21 rows for a 384-dot head)
 
 ### Packet Format
 
