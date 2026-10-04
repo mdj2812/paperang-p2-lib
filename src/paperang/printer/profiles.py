@@ -1,28 +1,40 @@
-"""Paperang P2 — Print profile management."""
+"""Paperang — Print profile management."""
 
 import json
 import os
 
 
-def load_profiles(profiles_path=None):
-    """Load print profiles from JSON file."""
-    if profiles_path and os.path.exists(profiles_path):
-        try:
-            with open(profiles_path, 'r') as f:
-                return json.load(f)
-        except (json.JSONDecodeError, OSError):
-            return {}
+def _bundled_profiles_path():
+    """Path of the profiles.json shipped inside the package.
 
-    # Fallback to bundled profiles
-    pkg_dir = os.path.dirname(os.path.abspath(__file__))
-    bundled = os.path.join(pkg_dir, 'profiles.json')
-    if os.path.exists(bundled):
-        try:
-            with open(bundled, 'r') as f:
-                return json.load(f)
-        except (json.JSONDecodeError, OSError):
-            return {}
-    return {}
+    The file lives at the package root (``paperang/profiles.json``), one
+    directory above this module, and is declared as package data in
+    ``pyproject.toml``.
+    """
+    pkg_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(pkg_root, 'profiles.json')
+
+
+def load_profiles(profiles_path=None):
+    """Load print profiles from a JSON file.
+
+    Args:
+        profiles_path: Explicit path to a profiles file.  When given it is the
+            only file used: a missing or unreadable file yields ``{}``.  When
+            None, the ``profiles.json`` bundled with the package is loaded.
+
+    Returns:
+        Mapping of profile name to settings, or ``{}`` if nothing could be
+        loaded.
+    """
+    if profiles_path is None:
+        profiles_path = _bundled_profiles_path()
+
+    try:
+        with open(profiles_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return {}
 
 
 def list_profiles(profiles_path=None):

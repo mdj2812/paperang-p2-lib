@@ -27,6 +27,14 @@
 - `UsbTransport` resolves its default VID/PID from the default model rather
   than importing them from `constants`.
 
+### Fixed
+- `load_profiles()` returned an empty mapping: the bundled `profiles.json` was
+  looked up next to `printer/profiles.py` instead of at the package root, so
+  the built-in print-quality presets were never applied. This also silently
+  disabled the `profile` attribute of the `paperang-hacs` `print_image`
+  service. An explicit `profiles_path` is now the only file used, with a
+  missing or unreadable file yielding `{}` (#29).
+
 ### Compatibility
 - Paperang P2 output is byte-for-byte identical to 1.2.1 (verified for image,
   vertical image, text, QR, pickup code, and both test pages).
