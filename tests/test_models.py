@@ -28,7 +28,12 @@ from paperang.constants import (
 from paperang.models import P2
 from paperang.models import models_for_usb, usb_pids
 from paperang.printer import PaperangP2, PaperangPrinter
-from paperang.protocol import CMD_PRINT_BITMAP, MAX_PACKET_DATA, unpack_response
+from paperang.protocol import (
+    CMD_PRINT_BITMAP,
+    CMD_SET_PAPER,
+    MAX_PACKET_DATA,
+    unpack_response,
+)
 from paperang.transport import Transport, UsbTransport
 
 # A 384-dot model, matching the parameters reported for the Paperang D1.
@@ -185,6 +190,31 @@ class TestD1Model:
         assert d1.transports == ("usb",)
         assert d1.supports_usb
         assert not d1.supports_bluetooth
+
+    def test_set_paper_type_is_disabled(self):
+        """The D1 hangs on CMD_SET_PAPER, so the model opts out."""
+        assert get_model("d1").supports_set_paper_type is False
+        assert get_model("p2").supports_set_paper_type is True
+
+    def test_pattern_test_skips_set_paper_type(self):
+        transport = MockTransport()
+        PaperangP2(transport, model="d1").print_pattern_test()
+        commands = [
+            frame["cmd"]
+            for packet in transport.sent_packets
+            for frame in unpack_response(packet)
+        ]
+        assert CMD_SET_PAPER not in commands
+
+    def test_p2_still_sends_set_paper_type(self):
+        transport = MockTransport()
+        PaperangP2(transport).print_pattern_test()
+        commands = [
+            frame["cmd"]
+            for packet in transport.sent_packets
+            for frame in unpack_response(packet)
+        ]
+        assert CMD_SET_PAPER in commands
 
     def test_usb_pids_cover_both_models(self):
         pids = usb_pids()
@@ -421,6 +451,26 @@ class TestModelFiles:
             "bt_rfcomm_channel": channel,
         })
         with pytest.raises(InvalidModelError, match="between 1 and 30"):
+            load_model_file(path)
+
+    def test_set_paper_type_defaults_to_supported(self, tmp_path):
+        path = write_model(tmp_path, {
+            "name": "X",
+            "vid": 1,
+            "pids": [2],
+            "print_width": 384,
+        })
+        assert get_model(path).supports_set_paper_type is True
+
+    def test_set_paper_type_must_be_a_boolean(self, tmp_path):
+        path = write_model(tmp_path, {
+            "name": "X",
+            "vid": 1,
+            "pids": [2],
+            "print_width": 384,
+            "supports_set_paper_type": "no",
+        })
+        with pytest.raises(InvalidModelError, match="must be true or false"):
             load_model_file(path)
 
     def test_missing_file_rejected(self, tmp_path):

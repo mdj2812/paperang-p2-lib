@@ -32,6 +32,7 @@ quality never gets baked into a hardware definition.
 | `bt_name_prefixes` | no | Bluetooth device-name prefixes used during discovery, lower-case. |
 | `bt_service_uuids` | no | Vendor service UUIDs, in the canonical 128-bit form. |
 | `bt_rfcomm_channel` | no | Known RFCOMM channel, for models where SDP probing cannot find one. |
+| `supports_set_paper_type` | no | Set to `false` for models that hang or misbehave when `CMD_SET_PAPER` is sent; the print paths then skip it. Defaults to `true`. |
 
 Derived values are deliberately not stored: `line_bytes` comes from
 `print_width`, and the protocol's per-packet row count comes from `line_bytes`.

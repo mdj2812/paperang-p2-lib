@@ -162,7 +162,8 @@ class Paperang(PaperangPrinter):
                     row[byte_pos] |= (1 << bit_pos)
             data.extend(row)
 
-        self.set_paper_type(0)
+        if self.printer_model.supports_set_paper_type:
+            self.set_paper_type(0)
         self.set_heat_density(heat_density)
         self.feed(feed_before)
         self.print_bitmap(bytes(data), width_bytes)
@@ -365,7 +366,8 @@ class Paperang(PaperangPrinter):
                 row[b] = random.randint(0, 255)
             data.extend(row)
 
-        self.set_paper_type(0)
+        if self.printer_model.supports_set_paper_type:
+            self.set_paper_type(0)
         self.set_heat_density(DEFAULT_HEAT_DENSITY)
         self.feed(DEFAULT_FEED_BEFORE)
         self.print_bitmap(bytes(data), width_bytes)

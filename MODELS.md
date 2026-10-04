@@ -39,7 +39,9 @@ contributed.
   ([#22](https://github.com/mdj2812/paperang-p2-lib/issues/22)). The reporter
   printed over USB after changing only the product ID and print width. Classic
   Bluetooth and the 384-dot layout are still untested, so `transports` lists USB
-  only: a model never claims a transport that has not been confirmed.
+  only: a model never claims a transport that has not been confirmed. The D1
+  also hangs when `CMD_SET_PAPER` is sent, so `supports_set_paper_type` is
+  `false` for it and the print paths skip that command.
 
 ## Adding a model
 
