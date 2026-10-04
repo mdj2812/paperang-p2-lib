@@ -1,0 +1,8 @@
+{
+  "name": "D1",
+  "vid": "0x4348",
+  "pids": ["0x5585"],
+  "print_width": 384,
+  "aliases": ["paperang_d1", "zyb-d1"],
+  "transports": ["usb"]
+}

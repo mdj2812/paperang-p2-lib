@@ -3,6 +3,10 @@
 ## [Unreleased]
 
 ### Added
+- **D1 / ZYB-D1 model** — `paperang/models/d1.json`: USB PID `0x5585`, 384-dot
+  print head (48 bytes/row), aliases `paperang_d1` and `zyb-d1`. It comes from a
+  community report, so only the verified USB transport is declared; classic
+  Bluetooth and the 384-dot layout still need a real device (#22).
 - **Per-model Bluetooth metadata** — `transports`, `bt_name_prefixes`,
   `bt_service_uuids`, and an optional `bt_rfcomm_channel` in model JSON files.
 - `Paperang.auto_detect()` connects to a printer and resolves its model from
@@ -60,6 +64,9 @@
   than importing them from `constants`.
 
 ### Fixed
+- Tests: registering a temporary model no longer removes a real one. The
+  auto-detect conflict test registered a fake `d1` and deleted it afterwards,
+  which would have deleted the real model entry once `d1.json` existed.
 - `load_profiles()` returned an empty mapping: the bundled `profiles.json` was
   looked up next to `printer/profiles.py` instead of at the package root, so
   the built-in print-quality presets were never applied. This also silently

@@ -32,16 +32,19 @@ Based on [hurui200320/java-paperang-p2-usb](https://github.com/hurui200320/java-
 | Model | USB PID | Print head | Transports | Status |
 |-------|---------|------------|------------|--------|
 | P2 | `0x5584` | 576 dots (72 bytes/row) | USB, Bluetooth SPP | Verified |
+| D1 / ZYB-D1 | `0x5585` | 384 dots (48 bytes/row) | USB (Bluetooth untested) | Reported working over USB |
 
 All models share vendor ID `0x4348`. Model metadata lives in
 [`src/paperang/models/`](src/paperang/models/) — one JSON file per model — and
 `Paperang.auto_detect()` resolves the model from the USB product ID and the
 string reported by `CMD_GET_MODEL`.
 
-Pending hardware verification (tracked in
-[#22](https://github.com/mdj2812/paperang-p2-lib/issues/22)): D1 / ZYB-D1,
-USB PID `0x5585`, 384 dots. It is reported to print after only the PID and
-width are changed, but Bluetooth and layout still need a real device.
+The D1 entry comes from a community report
+([#22](https://github.com/mdj2812/paperang-p2-lib/issues/22)): it prints over
+USB once the product ID and width are changed, so the geometry is in the model
+table, but classic Bluetooth and the 384-dot layout are still untested. Only the
+verified transport is declared — `transports` never claims more than was
+actually tested.
 
 Adding a model is adding a JSON file — see
 [docs/adding-a-model.md](docs/adding-a-model.md). Note that a model must speak
