@@ -36,6 +36,7 @@ where = ["src"]
 paperang = [
     "profiles.json",
     "fonts/latin/*.ttf",
+    "models/*.json",
 ]
 
 [tool.coverage.run]

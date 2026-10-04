@@ -12,10 +12,12 @@ Modules:
 from .models import (
     DEFAULT_MODEL,
     MODELS,
+    InvalidModelError,
     PrinterModel,
     UnknownModelError,
     get_model,
     list_models,
+    load_model_file,
 )
 from .constants import (
     VENDOR_ID,
@@ -108,5 +110,6 @@ __all__ = [
     "load_profiles", "list_profiles",
     # Hardware models
     "PrinterModel", "MODELS", "DEFAULT_MODEL",
-    "UnknownModelError", "get_model", "list_models",
+    "UnknownModelError", "InvalidModelError",
+    "get_model", "list_models", "load_model_file",
 ]

@@ -3,12 +3,17 @@
 ## [Unreleased]
 
 ### Added
-- **Hardware model descriptors** — new `paperang.models` module with
-  `PrinterModel`, the `MODELS` registry, `get_model()`, `list_models()`, and
-  `UnknownModelError`. A model bundles the parameters that differ between
-  Paperang printers: USB VID/PIDs, print-head width, and default heat
-  density / paper feed. Custom models can be passed as instances without
-  editing the library.
+- **Hardware model descriptors** — new `paperang.models` package. Each model
+  ships as a JSON file (`paperang/models/p2.json`) holding the parameters that
+  differ between Paperang printers: USB VID/PIDs, print-head width, default
+  heat density and paper feed, and name aliases. `PrinterModel` is the runtime
+  type and the only place the data is validated, so the files never restate
+  derived values such as `line_bytes`. IDs accept both JSON integers and
+  strings like `"0x5584"`, since JSON has no hex literals.
+- `get_model()`, `list_models()`, `load_model_file()`, `MODELS`,
+  `UnknownModelError`, and `InvalidModelError`. `get_model()` accepts a
+  registered name or alias, a path to a model JSON file, or a `PrinterModel`
+  instance, so a new model can be tried without editing the library.
 - `PaperangPrinter` and `PaperangP2` accept `model=` (a registered name or a
   `PrinterModel`) and expose `print_width` / `line_bytes` as attributes.
 - `paperang.transport` now also exports `check_paperang_uuid`,

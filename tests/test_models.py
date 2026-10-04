@@ -4,15 +4,20 @@ Covers the P2 defaults staying intact and a non-P2 model (a 384-dot head,
 the geometry reported for the Paperang D1) driving everything correctly.
 """
 
+import json
+import os
+
 import pytest
 
 from paperang import (
     DEFAULT_MODEL,
     MODELS,
+    InvalidModelError,
     PrinterModel,
     UnknownModelError,
     get_model,
     list_models,
+    load_model_file,
 )
 from paperang.constants import (
     LINE_BYTES,
@@ -173,6 +178,160 @@ class TestConstantsStayP2:
         transport = UsbTransport()
         assert transport.vid == P2.vid
         assert transport.pid == P2.pid
+
+
+def write_model(tmp_path, payload, name="custom.json"):
+    """Write a model JSON file and return its path."""
+    path = tmp_path / name
+    if isinstance(payload, str):
+        path.write_text(payload, encoding="utf-8")
+    else:
+        path.write_text(json.dumps(payload), encoding="utf-8")
+    return str(path)
+
+
+class TestModelFiles:
+    """Model data comes from per-model JSON files."""
+
+    def test_bundled_file_is_the_source_of_truth(self):
+        import paperang.models
+
+        model_dir = os.path.dirname(os.path.abspath(paperang.models.__file__))
+        assert os.path.exists(os.path.join(model_dir, "p2.json"))
+
+        loaded = load_model_file(os.path.join(model_dir, "p2.json"))
+        assert loaded == MODELS["p2"]
+        assert (loaded.vid, loaded.pid) == (0x4348, 0x5584)
+        assert loaded.print_width == 576
+        assert loaded.line_bytes == 72
+
+    def test_all_bundled_files_are_registered(self):
+        import paperang.models
+
+        model_dir = os.path.dirname(os.path.abspath(paperang.models.__file__))
+        files = {f[:-5] for f in os.listdir(model_dir) if f.endswith(".json")}
+        assert files == set(MODELS)
+
+    def test_hex_and_decimal_ids_are_equivalent(self, tmp_path):
+        hex_path = write_model(tmp_path, {
+            "name": "H",
+            "vid": "0x4348",
+            "pids": ["0x5585"],
+            "print_width": 384,
+        }, "hex.json")
+        dec_path = write_model(tmp_path, {
+            "name": "D",
+            "vid": 17224,
+            "pids": [21893],
+            "print_width": 384,
+        }, "dec.json")
+
+        assert get_model(hex_path).vid == get_model(dec_path).vid == 0x4348
+        assert get_model(hex_path).pids == get_model(dec_path).pids == (0x5585,)
+
+    def test_defaults_are_applied(self, tmp_path):
+        path = write_model(tmp_path, {
+            "name": "Minimal",
+            "vid": 1,
+            "pids": [2],
+            "print_width": 384,
+        })
+        model = get_model(path)
+        assert model.heat_density == 75
+        assert model.feed_before == 50
+        assert model.feed_after == 300
+        assert model.aliases == ()
+
+    def test_aliases_from_file(self, tmp_path):
+        path = write_model(tmp_path, {
+            "name": "Test 384",
+            "vid": 1,
+            "pids": [2],
+            "print_width": 384,
+            "aliases": ["paperang_d1", "ZYB-D1"],
+        })
+        model = get_model(path)
+        assert model.aliases == ("paperang_d1", "ZYB-D1")
+
+    def test_model_path_in_get_model(self, tmp_path):
+        path = write_model(tmp_path, {
+            "name": "From File",
+            "vid": 1,
+            "pids": [2],
+            "print_width": 384,
+        })
+        assert get_model(path).print_width == 384
+
+    def test_printer_accepts_model_path(self, tmp_path):
+        path = write_model(tmp_path, {
+            "name": "From File",
+            "vid": 0x4348,
+            "pids": [0x5585],
+            "print_width": 384,
+        })
+        printer = PaperangPrinter(MockTransport(), model=path)
+        assert printer.print_width == 384
+        assert printer.line_bytes == 48
+
+    def test_unknown_field_rejected(self, tmp_path):
+        path = write_model(tmp_path, {
+            "name": "X",
+            "vid": 1,
+            "pids": [2],
+            "print_width": 384,
+            "line_bytes": 48,
+        })
+        with pytest.raises(InvalidModelError, match="unknown field"):
+            load_model_file(path)
+
+    def test_missing_required_field_rejected(self, tmp_path):
+        path = write_model(tmp_path, {
+            "name": "X",
+            "vid": 1,
+            "print_width": 384,
+        })
+        with pytest.raises(InvalidModelError, match="missing required field"):
+            load_model_file(path)
+
+    def test_invalid_print_width_rejected(self, tmp_path):
+        path = write_model(tmp_path, {
+            "name": "X",
+            "vid": 1,
+            "pids": [2],
+            "print_width": 100,
+        })
+        with pytest.raises(InvalidModelError, match="multiple of 8"):
+            load_model_file(path)
+
+    def test_bad_pids_type_rejected(self, tmp_path):
+        path = write_model(tmp_path, {
+            "name": "X",
+            "vid": 1,
+            "pids": 5585,
+            "print_width": 384,
+        })
+        with pytest.raises(InvalidModelError, match="pids"):
+            load_model_file(path)
+
+    def test_malformed_json_rejected(self, tmp_path):
+        path = write_model(tmp_path, "{not json", "broken.json")
+        with pytest.raises(InvalidModelError, match="not valid JSON"):
+            load_model_file(path)
+
+    def test_missing_file_rejected(self, tmp_path):
+        with pytest.raises(InvalidModelError, match="cannot read"):
+            load_model_file(str(tmp_path / "nope.json"))
+
+    def test_error_message_names_the_file(self, tmp_path):
+        path = write_model(tmp_path, {
+            "name": "X",
+            "vid": 1,
+            "pids": [2],
+            "print_width": 100,
+        })
+        with pytest.raises(InvalidModelError) as excinfo:
+            load_model_file(path)
+        assert "custom.json" in str(excinfo.value)
 
 
 class TestPrinterGeometry:
