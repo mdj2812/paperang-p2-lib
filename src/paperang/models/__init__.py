@@ -25,13 +25,20 @@ from dataclasses import dataclass, fields
 
 log = logging.getLogger(__name__)
 
-#: Transports the library can speak.  BLE is deliberately not supported.
+#: Transports the library can speak.
 TRANSPORTS = ("usb", "spp")
 
+# A Bluetooth service UUID in the canonical 128-bit form, lower-case: 8 hex
+# digits, then three groups of 4, then one group of 12, joined by hyphens —
+# e.g. 0000fee7-0000-1000-8000-00805f9b34fb, the form bluetoothctl and
+# sdptool print.  Short 16-bit aliases such as "fee7" are rejected rather than
+# expanded, so a model file always carries the full string seen on the command
+# line and cannot silently mean something else.
 _UUID_RE = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
 )
 
+# Strips everything that is not a-z or 0-9, for model-name matching.
 _ALIAS_RE = re.compile(r"[^a-z0-9]")
 
 
