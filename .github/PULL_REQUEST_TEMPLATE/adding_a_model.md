@@ -9,14 +9,12 @@ Full guide: docs/adding-a-model.md
 
 ## Model
 
-|  |  |
-|---|---|
-| Model name |  |
-| Bluetooth name |  |
-| `CMD_GET_MODEL` returns |  |
-| USB VID:PID | `0x…:0x…` |
-| Print head width | … dots (… bytes/row) |
-| Paper / format |  |
+- Model name:
+- Bluetooth name:
+- `CMD_GET_MODEL` returns:
+- USB VID:PID: `0x…:0x…`
+- Print head width: … dots (… bytes/row)
+- Paper / format:
 
 ## Protocol compatibility
 
