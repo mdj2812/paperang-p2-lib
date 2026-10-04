@@ -1,7 +1,9 @@
-"""Paperang P2 Printer — low-level communication layer.
+"""Paperang Printer — low-level communication layer.
 
 Handles protocol-level packet send/receive and basic printer commands.
 Physical transport (USB, Bluetooth, …) is abstracted behind a Transport object.
+Model-specific parameters (USB IDs, print-head geometry, feed defaults) come
+from a :class:`~paperang.models.PrinterModel`.
 """
 
 import struct
@@ -39,6 +41,7 @@ from ..protocol import (
     CMD_DISCONNECT_BT,
     MAX_PACKET_DATA,
 )
+from ..models import get_model
 from ..transport import Transport, UsbTransport
 
 # All "get" commands require a single data byte
@@ -46,17 +49,30 @@ _GET_DATA = struct.pack('<B', 1)
 
 
 class PaperangPrinter:
-    """Low-level Paperang P2 printer interface.
+    """Low-level Paperang printer interface.
 
     Sits above a :class:`~paperang.transport.Transport` and provides
     command-level send / receive including packet framing and CRC.
 
     Args:
         transport: Physical transport.  Defaults to USB if not given.
+        model: Hardware model — a registered name (``"p2"``) or a
+            :class:`~paperang.models.PrinterModel` instance.  Defaults to the
+            built-in P2 model.  The resolved model is available as
+            ``printer_model``, with ``print_width`` and ``line_bytes`` exposed
+            as convenience attributes.
     """
 
-    def __init__(self, transport: Transport | None = None):
-        self._transport = transport if transport is not None else UsbTransport()
+    def __init__(self, transport: Transport | None = None, model=None):
+        self.printer_model = get_model(model)
+        self.print_width = self.printer_model.print_width
+        self.line_bytes = self.printer_model.line_bytes
+        if transport is None:
+            transport = UsbTransport(
+                vid=self.printer_model.vid,
+                pid=self.printer_model.pid,
+            )
+        self._transport = transport
 
     # ── Connection ──────────────────────────────────────────────
 
@@ -305,9 +321,29 @@ class PaperangPrinter:
 
     # ── Bitmap printing ─────────────────────────────────────────
 
-    def print_bitmap(self, bitmap_data, width_bytes=72):
-        """Print raw bitmap data (row-based, 14 lines per packet)."""
+    def print_bitmap(self, bitmap_data, width_bytes=None):
+        """Print raw bitmap data, split across packets as needed.
+
+        Args:
+            bitmap_data: Row-major bitmap bytes.
+            width_bytes: Bytes per row.  Defaults to the model's line width
+                (``line_bytes``).  Must equal print-head dots / 8.
+
+        Raises:
+            ValueError: ``width_bytes`` is not positive, or a single row does
+                not fit in one packet payload.
+        """
+        if width_bytes is None:
+            width_bytes = self.line_bytes
+        if width_bytes <= 0:
+            raise ValueError(f"width_bytes must be positive, got {width_bytes}")
+
         lines_per_packet = MAX_PACKET_DATA // width_bytes
+        if lines_per_packet < 1:
+            raise ValueError(
+                f"width_bytes={width_bytes} exceeds the {MAX_PACKET_DATA}-byte "
+                "packet payload, so no complete row fits in a packet"
+            )
 
         total_bytes = len(bitmap_data)
         total_lines = total_bytes // width_bytes

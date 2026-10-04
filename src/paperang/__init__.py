@@ -1,13 +1,22 @@
-"""Paperang P2 USB Printer Library.
+"""Paperang Printer Library.
 
 Modules:
     protocol   — CRC, packet pack/unpack, command codes
     printer    — USB connection, low-level send/read, basic commands
     printing   — Image/text/QR rendering, high-level print functions
     profiles   — Print profile management
+    models     — Hardware model descriptors (USB IDs, print geometry)
     constants  — USB IDs, dimensions, defaults, font paths
 """
 
+from .models import (
+    DEFAULT_MODEL,
+    MODELS,
+    PrinterModel,
+    UnknownModelError,
+    get_model,
+    list_models,
+)
 from .constants import (
     VENDOR_ID,
     PRODUCT_ID,
@@ -97,4 +106,7 @@ __all__ = [
     "Transport",
     # Profiles
     "load_profiles", "list_profiles",
+    # Hardware models
+    "PrinterModel", "MODELS", "DEFAULT_MODEL",
+    "UnknownModelError", "get_model", "list_models",
 ]

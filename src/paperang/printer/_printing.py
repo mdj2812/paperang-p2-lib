@@ -9,8 +9,6 @@ import random
 from PIL import Image, ImageDraw, ImageFont
 
 from ..constants import (
-    PRINT_WIDTH,
-    LINE_BYTES,
     BUNDLED_FONTS_TEXT,
     BUNDLED_FONTS_PICKUP,
     BUNDLED_FONTS_CJK,
@@ -20,28 +18,36 @@ from ..transport import Transport
 
 
 class PaperangP2(PaperangPrinter):
-    """High-level Paperang P2 printer with image/text/QR support."""
+    """High-level Paperang printer with image/text/QR support.
+
+    Despite the historical name this class is not P2-specific: pass ``model``
+    to drive another Paperang model (see :mod:`paperang.models`).  Print
+    geometry is read from the resolved model, never from module constants.
+    """
 
     def __init__(self, transport: Transport | None = None,
                  font_paths_text=None, font_paths_pickup=None,
-                 profiles_path=None):
-        super().__init__(transport)
+                 profiles_path=None, model=None):
+        super().__init__(transport, model=model)
         self.font_paths_text = font_paths_text
         self.font_paths_pickup = font_paths_pickup
         self.profiles_path = profiles_path
 
     # ── High-level print functions ──────────────────────────────
 
-    def print_image(self, image_path, heat_density=75, feed_before=50,
-                    feed_after=300, threshold=128, brightness=1.0, contrast=1.0,
+    def print_image(self, image_path, heat_density=None, feed_before=None,
+                    feed_after=None, threshold=128, brightness=1.0, contrast=1.0,
                     vertical=False):
         """Print an image from a local file path or a remote URL.
 
         Args:
             image_path: Local file path or HTTP(S) URL to a PNG/JPEG image.
-            heat_density: 0-100 thermal print density.
-            feed_before: Lines of paper feed before printing.
-            feed_after: Lines of paper feed after printing.
+            heat_density: 0-100 thermal print density.  Defaults to the
+                model's heat density.
+            feed_before: Lines of paper feed before printing.  Defaults to
+                the model's value.
+            feed_after: Lines of paper feed after printing.  Defaults to the
+                model's value.
             threshold: Binarization threshold (0-255).
             brightness: Brightness multiplier (1.0 = unchanged).
             contrast: Contrast adjustment (1.0 = unchanged).
@@ -49,6 +55,13 @@ class PaperangP2(PaperangPrinter):
                 (text reads top-to-bottom along the paper strip).
                 Useful for labels and vertical receipts.
         """
+        if heat_density is None:
+            heat_density = self.printer_model.heat_density
+        if feed_before is None:
+            feed_before = self.printer_model.feed_before
+        if feed_after is None:
+            feed_after = self.printer_model.feed_after
+
         if isinstance(image_path, str) and image_path.startswith(('http://', 'https://')):
             from io import BytesIO
             from urllib.request import urlopen
@@ -61,29 +74,29 @@ class PaperangP2(PaperangPrinter):
 
         if not vertical:
             # Normal horizontal printing: scale to print-head width
-            if img.width != PRINT_WIDTH:
-                ratio = PRINT_WIDTH / img.width
+            if img.width != self.print_width:
+                ratio = self.print_width / img.width
                 new_height = int(img.height * ratio)
-                img = img.resize((PRINT_WIDTH, new_height), Image.LANCZOS)
+                img = img.resize((self.print_width, new_height), Image.LANCZOS)
         else:
             # Rotate 90° clockwise BEFORE binarization to avoid mode-'1' artifacts.
             img = img.transpose(Image.ROTATE_270)
             # If the rotated image is wider than the print head, scale it down.
-            if img.width > PRINT_WIDTH:
-                ratio = PRINT_WIDTH / img.width
+            if img.width > self.print_width:
+                ratio = self.print_width / img.width
                 new_height = int(img.height * ratio)
-                img = img.resize((PRINT_WIDTH, new_height), Image.LANCZOS)
+                img = img.resize((self.print_width, new_height), Image.LANCZOS)
 
         if img.mode != '1':
             img = img.convert('L')
             img = img.point(lambda x: max(0, min(255, int((x - 128) * contrast + 128 * brightness))))
             img = img.point(lambda x: 0 if x < threshold else 255, '1')
 
-        if vertical and img.width < PRINT_WIDTH:
+        if vertical and img.width < self.print_width:
             # Paste the narrow rotated image onto a full-width white canvas
-            # so the printer receives standard 72-byte rows.
-            canvas = Image.new('1', (PRINT_WIDTH, img.height), 1)
-            offset_x = (PRINT_WIDTH - img.width) // 2
+            # so the printer receives full-width rows for this model.
+            canvas = Image.new('1', (self.print_width, img.height), 1)
+            offset_x = (self.print_width - img.width) // 2
             canvas.paste(img, (offset_x, 0))
             img = canvas
 
@@ -128,14 +141,19 @@ class PaperangP2(PaperangPrinter):
         fonts.extend(self._resolve_font_paths(BUNDLED_FONTS_TEXT))
         return fonts
 
-    def print_text(self, text, font_size=24, heat_density=75, vertical=False):
+    def print_text(self, text, font_size=24, heat_density=None, vertical=False):
         """Print text. CJK support requires installing with [cjk] extra.
 
         Args:
+            heat_density: 0-100 thermal print density.  Defaults to the
+                model's heat density.
             vertical: If True, text is rotated 90° clockwise to print
                 along the paper strip length. Larger font sizes (48–96)
                 produce dramatic vertical labels.
         """
+        if heat_density is None:
+            heat_density = self.printer_model.heat_density
+
         font_paths = self._get_text_fonts()
         font = self._load_font(font_paths, font_size)
 
@@ -152,7 +170,7 @@ class PaperangP2(PaperangPrinter):
             line_heights.append(h + 4)
             total_height += h + 4
 
-        img_width = max_width + 20 if vertical else PRINT_WIDTH
+        img_width = max_width + 20 if vertical else self.print_width
         img_height = ((total_height + 20 + 7) // 8) * 8
         img = Image.new('1', (img_width, img_height), 1)
         draw = ImageDraw.Draw(img)
@@ -166,13 +184,18 @@ class PaperangP2(PaperangPrinter):
         img.save(tmp_path)
         return self.print_image(tmp_path, heat_density=heat_density, vertical=vertical)
 
-    def print_qr(self, content, box_size=10, heat_density=75, max_width=None,
+    def print_qr(self, content, box_size=10, heat_density=None, max_width=None,
                  vertical=False):
         """Print QR code.
 
         Args:
+            heat_density: 0-100 thermal print density.  Defaults to the
+                model's heat density.
             vertical: If True, rotate 90° clockwise for vertical printing.
         """
+        if heat_density is None:
+            heat_density = self.printer_model.heat_density
+
         try:
             import qrcode
         except ImportError:
@@ -180,7 +203,7 @@ class PaperangP2(PaperangPrinter):
             return False
 
         if max_width is None:
-            max_width = PRINT_WIDTH - 40
+            max_width = self.print_width - 40
 
         optimal_box_size = max_width // 41
         if optimal_box_size < 4:
@@ -198,8 +221,8 @@ class PaperangP2(PaperangPrinter):
         img = img.resize((qr_size, qr_size), Image.NEAREST)
         img = img.convert('L').point(lambda x: 0 if x < 128 else 255, '1')
 
-        canvas = Image.new('1', (PRINT_WIDTH, qr_size + 20), 1)
-        offset_x = (PRINT_WIDTH - qr_size) // 2
+        canvas = Image.new('1', (self.print_width, qr_size + 20), 1)
+        offset_x = (self.print_width - qr_size) // 2
         canvas.paste(img, (offset_x, 10))
 
         tmp_path = '/tmp/paperang_qr.png'
@@ -232,7 +255,7 @@ class PaperangP2(PaperangPrinter):
             max_width = max(max_width, w)
             code_heights.append(h)
 
-        canvas_width = PRINT_WIDTH
+        canvas_width = self.print_width
         line_spacing = 30 if compact else 60
         total_height = sum(code_heights) + len(codes) * line_spacing + 40
         canvas_height = ((total_height + 7) // 8) * 8
@@ -255,15 +278,19 @@ class PaperangP2(PaperangPrinter):
 
     def print_pattern_test(self):
         """Print pattern test (line/column/multi-packet)."""
-        width_bytes = LINE_BYTES
+        width_bytes = self.line_bytes
         data = bytearray()
 
-        # Test line length - 8 columns
+        # Test line length - 8 evenly sized column blocks.  Splitting the row
+        # width (rather than a fixed 9 bytes) keeps this valid for every model:
+        # 72 bytes -> 9-byte blocks, 48 bytes -> 6-byte blocks.
+        columns = 8
+        block_bytes = width_bytes // columns
         for _ in range(50):
             row = bytearray(width_bytes)
-            for col in range(8):
-                start_byte = col * 9
-                for b in range(9):
+            for col in range(columns):
+                start_byte = col * block_bytes
+                for b in range(block_bytes):
                     row[start_byte + b] = 0xFF
             data.extend(row)
 
@@ -289,15 +316,15 @@ class PaperangP2(PaperangPrinter):
             data.extend(row)
 
         self.set_paper_type(0)
-        self.set_heat_density(75)
-        self.feed(50)
+        self.set_heat_density(self.printer_model.heat_density)
+        self.feed(self.printer_model.feed_before)
         self.print_bitmap(bytes(data), width_bytes)
-        self.feed(300)
+        self.feed(self.printer_model.feed_after)
         return True
 
     def print_heat_density_test(self):
         """Print heat density test (0, 25, 50, 75, 100)."""
-        width_bytes = LINE_BYTES
+        width_bytes = self.line_bytes
 
         for density in [0, 25, 50, 75, 100]:
             self.set_heat_density(density)
@@ -316,8 +343,8 @@ class PaperangP2(PaperangPrinter):
             self.print_bitmap(bytes(data), width_bytes)
             self.feed(50)
 
-        self.set_heat_density(75)
-        self.feed(300)
+        self.set_heat_density(self.printer_model.heat_density)
+        self.feed(self.printer_model.feed_after)
         return True
 
     # ── Helpers ─────────────────────────────────────────────────

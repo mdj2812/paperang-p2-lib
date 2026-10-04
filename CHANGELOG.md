@@ -1,5 +1,38 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- **Hardware model descriptors** — new `paperang.models` module with
+  `PrinterModel`, the `MODELS` registry, `get_model()`, `list_models()`, and
+  `UnknownModelError`. A model bundles the parameters that differ between
+  Paperang printers: USB VID/PIDs, print-head width, and default heat
+  density / paper feed. Custom models can be passed as instances without
+  editing the library.
+- `PaperangPrinter` and `PaperangP2` accept `model=` (a registered name or a
+  `PrinterModel`) and expose `print_width` / `line_bytes` as attributes.
+- `paperang.transport` now also exports `check_paperang_uuid`,
+  `PAPERANG_BT_NAMES`, and `PAPERANG_SERVICE_UUID`.
+
+### Changed
+- Print geometry is taken from the resolved model instead of module-level
+  constants: image scaling, the vertical canvas, QR sizing and centring,
+  pickup codes, and the pattern / heat-density test pages.
+- `heat_density`, `feed_before`, and `feed_after` default to the model's values
+  when not passed explicitly. For the P2 these are the previous defaults.
+- `print_bitmap()` defaults `width_bytes` to the model's line width and raises
+  a clear error for a width that cannot fit a row in one packet.
+- `print_pattern_test()` derives its column blocks from the row width instead
+  of assuming 72-byte rows.
+- `UsbTransport` resolves its default VID/PID from the default model rather
+  than importing them from `constants`.
+
+### Compatibility
+- Paperang P2 output is byte-for-byte identical to 1.2.1 (verified for image,
+  vertical image, text, QR, pickup code, and both test pages).
+- Existing imports, constructor signatures, and `UsbTransport` internals
+  (`vid`/`pid` positional order, `_dev`/`_ep_out`/`_ep_in`) are unchanged.
+
 ## [1.2.1] - 2026-07-19
 
 ### Fixed

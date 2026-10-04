@@ -1,21 +1,27 @@
-"""Paperang P2 — USB transport implementation."""
+"""Paperang — USB transport implementation."""
 
 from __future__ import annotations
 
-from ..constants import VENDOR_ID, PRODUCT_ID
+from ..models import get_model
 from ._base import Transport
 
 
 class UsbTransport(Transport):
-    """USB transport for Paperang P2 (vendor-specific VID/PID)."""
+    """USB transport for Paperang printers (vendor-specific VID/PID)."""
 
-    def __init__(self, vid: int = VENDOR_ID, pid: int = PRODUCT_ID) -> None:
+    def __init__(self, vid: int | None = None, pid: int | None = None) -> None:
         """Initialize USB transport with vendor/product IDs.
 
         Args:
-            vid: USB Vendor ID (default Paperang: 0x4348).
-            pid: USB Product ID (default Paperang P2: 0x5584).
+            vid: USB Vendor ID.  Defaults to the default model's VID
+                (Paperang: 0x4348).
+            pid: USB Product ID.  Defaults to the default model's PID
+                (Paperang P2: 0x5584).
         """
+        if vid is None or pid is None:
+            default_model = get_model()
+            vid = default_model.vid if vid is None else vid
+            pid = default_model.pid if pid is None else pid
         self.vid = vid
         self.pid = pid
         self._dev = None
@@ -31,7 +37,10 @@ class UsbTransport(Transport):
 
         self._dev = usb.core.find(idVendor=self.vid, idProduct=self.pid)
         if self._dev is None:
-            raise RuntimeError("Paperang P2 printer not found")
+            raise RuntimeError(
+                f"Paperang printer not found (VID=0x{self.vid:04x}, "
+                f"PID=0x{self.pid:04x})"
+            )
 
         if self._dev.is_kernel_driver_active(0):
             self._dev.detach_kernel_driver(0)
