@@ -34,6 +34,11 @@
   `PAPERANG_BT_NAMES`, and `PAPERANG_SERVICE_UUID`.
 
 ### Changed
+- Tests: print geometry is now checked for **every registered model** through a
+  parameterized matrix (image scaling, bitmap row alignment, per-packet row
+  counts, text and QR alignment), plus a synthetic 384-dot head until #22 adds
+  the D1. Scattered 72/576 literals in the older tests were replaced with the
+  model's own values or the P2 constants.
 - Bluetooth discovery and RFCOMM channel lookup are model-agnostic. Channel
   lookup probes the vendor service UUIDs first — so printers that advertise
   both keep the channel they used before — then the standard SPP profile, then

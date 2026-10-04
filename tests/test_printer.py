@@ -104,8 +104,8 @@ class TestClassHierarchy:
     def test_both_names_are_equivalent(self):
         generic = Paperang()
         historical = PaperangP2()
-        assert generic.print_width == historical.print_width == 576
-        assert generic.line_bytes == historical.line_bytes == 72
+        assert generic.print_width == historical.print_width == PRINT_WIDTH
+        assert generic.line_bytes == historical.line_bytes == LINE_BYTES
 
     def test_both_names_accept_a_model(self):
         from paperang.models import get_model

@@ -110,7 +110,7 @@ class TestPrintImage:
 
     def _make_test_image(self, path):
         from PIL import Image
-        img = Image.new("RGB", (576, 100), "white")
+        img = Image.new("RGB", (PRINT_WIDTH, 100), "white")
         img.save(path)
 
     def test_print_image_file(self, p2, tmp_path):
@@ -233,7 +233,7 @@ class TestVerticalPrinting:
         """Vertical image should rotate and print."""
         from PIL import Image
         path = os.path.join(str(tmp_path), "test.png")
-        img = Image.new("RGB", (576, 200), "white")
+        img = Image.new("RGB", (PRINT_WIDTH, 200), "white")
         # Draw a black rectangle to verify content survives rotation
         from PIL import ImageDraw
         draw = ImageDraw.Draw(img)
@@ -250,13 +250,13 @@ class TestVerticalPrinting:
         path = os.path.join(str(tmp_path), "tall.png")
         # Create an image that will be 800px wide after 90° rotation
         # (i.e., 800px tall before rotation)
-        img = Image.new("RGB", (576, 800), "white")
+        img = Image.new("RGB", (PRINT_WIDTH, 800), "white")
         img.save(path)
         result = p2.print_image(path, vertical=True, feed_before=0, feed_after=0)
         assert result is True
         bm = _extract_bitmap(p2._transport.sent_packets)
         _assert_valid_bitmap(bm)
-        # 800px wide → scaled to PRINT_WIDTH=576, height → int(576 * 576/800) = 414
+        # 800px wide → scaled to PRINT_WIDTH, height → int(PRINT_WIDTH ** 2 / 800)
         assert len(bm) // LINE_BYTES == 414, (
             f"Expected 414 rows after scaling, got {len(bm) // LINE_BYTES}"
         )

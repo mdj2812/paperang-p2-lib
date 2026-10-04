@@ -10,6 +10,7 @@ from paperang import (
     PrinterModel,
     UnknownModelError,
 )
+from paperang.constants import LINE_BYTES, PRINT_WIDTH
 from paperang.models import models_for_usb, resolve_model, usb_pids
 from paperang.printer import PaperangP2
 from paperang.protocol import CMD_SENT_MODEL, pack_packet
@@ -98,8 +99,8 @@ class TestAutoDetect:
 
         assert transport.connected
         assert printer.printer_model.name == "P2"
-        assert printer.print_width == 576
-        assert printer.line_bytes == 72
+        assert printer.print_width == PRINT_WIDTH
+        assert printer.line_bytes == LINE_BYTES
 
     def test_resolves_from_reported_name_without_usb_ids(self):
         """Bluetooth has no VID/PID, so the reported name is the only signal."""
