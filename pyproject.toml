@@ -36,11 +36,21 @@ where = ["src"]
 paperang = [
     "profiles.json",
     "fonts/latin/*.ttf",
+    "models/*.json",
 ]
 
 [tool.coverage.run]
 source = ["src/paperang"]
 relative_files = true
+
+[tool.ruff]
+# Pin the rule set explicitly.  Ruff's default selection is not stable across
+# releases, so leaving this open silently changed the CI result on an unchanged
+# codebase.
+target-version = "py38"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
 
 [tool.coverage.report]
 exclude_also = [

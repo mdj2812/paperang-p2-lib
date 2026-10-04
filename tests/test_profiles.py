@@ -35,6 +35,25 @@ def test_load_profiles_missing_file():
     assert profiles == {}
 
 
+def test_load_profiles_default_loads_bundled():
+    """No argument: the packaged profiles.json must be found (#29)."""
+    profiles = load_profiles()
+    assert set(profiles) == {
+        "portrait", "landscape", "document", "high_contrast", "light",
+    }
+    for name, settings in profiles.items():
+        assert "description" in settings, name
+        assert "heat_density" in settings, name
+
+
+def test_list_profiles_default_lists_bundled(capsys):
+    """list_profiles() lists the packaged profiles (#29)."""
+    list_profiles()
+    captured = capsys.readouterr()
+    for name in ("portrait", "landscape", "document", "high_contrast", "light"):
+        assert name in captured.out
+
+
 def test_load_profiles_invalid_json():
     """Invalid JSON should return empty dict."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:

@@ -1,20 +1,31 @@
-"""Constants for Paperang P2 Printer."""
+"""Constants for Paperang printers.
+
+The module-level values describe the Paperang P2 and are kept for backward
+compatibility.  They are derived from the built-in P2
+:class:`~paperang.models.PrinterModel`; for other models use
+:func:`paperang.get_model` and read the attributes off the returned model.
+"""
 
 import os
 
-# USB IDs
-VENDOR_ID = 0x4348
-PRODUCT_ID = 0x5584
+from .models import DEFAULT_MODEL, get_model
 
-# Physical print parameters
-PRINT_WIDTH = 576  # pixels (72 bytes/line * 8)
-LINE_BYTES = 72    # bytes per line
+_P2 = get_model(DEFAULT_MODEL)
+
+# USB IDs (Paperang P2)
+VENDOR_ID = _P2.vid
+PRODUCT_ID = _P2.pid
+
+# Physical print parameters (Paperang P2)
+PRINT_WIDTH = _P2.print_width   # pixels (72 bytes/line * 8)
+LINE_BYTES = _P2.line_bytes     # bytes per line
 
 # Paper types
 PAPER_TYPE_NORMAL = 0
 PAPER_TYPE_CONTINUOUS = 1
 
-# Default print settings
+# Default print settings.  These are job-level values, not model properties:
+# a print profile (load_profiles()) or an explicit call argument overrides them.
 DEFAULT_HEAT_DENSITY = 75
 DEFAULT_THRESHOLD = 128
 DEFAULT_BRIGHTNESS = 1.0

@@ -1,5 +1,54 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- **Hardware model descriptors** — new `paperang.models` package. Each model
+  ships as a JSON file (`paperang/models/p2.json`) describing what the hardware
+  *is*: model name, USB VID/PIDs, print-head width, and name aliases.
+  `PrinterModel` is the runtime type and the only place the data is validated,
+  so the files never restate derived values such as `line_bytes`. IDs accept
+  both JSON integers and strings like `"0x5584"`, since JSON has no hex
+  literals.
+- `get_model()`, `list_models()`, `load_model_file()`, `MODELS`,
+  `UnknownModelError`, and `InvalidModelError`. `get_model()` accepts a
+  registered name or alias, a path to a model JSON file, or a `PrinterModel`
+  instance, so a new model can be tried without editing the library.
+- `PaperangPrinter` and `PaperangP2` accept `model=` (a registered name or a
+  `PrinterModel`) and expose `print_width` / `line_bytes` as attributes.
+- `paperang.transport` now also exports `check_paperang_uuid`,
+  `PAPERANG_BT_NAMES`, and `PAPERANG_SERVICE_UUID`.
+
+### Changed
+- Print geometry is taken from the resolved model instead of module-level
+  constants: image scaling, the vertical canvas, QR sizing and centring,
+  pickup codes, and the pattern / heat-density test pages.
+- `heat_density`, `feed_before`, and `feed_after` keep their previous defaults
+  from `constants.py`. They are job-level print settings rather than hardware
+  properties, so they are deliberately not part of a model definition: a print
+  profile or an explicit argument overrides them, and a model file that sets
+  them is rejected as having an unknown field.
+- `print_bitmap()` defaults `width_bytes` to the model's line width and raises
+  a clear error for a width that cannot fit a row in one packet.
+- `print_pattern_test()` derives its column blocks from the row width instead
+  of assuming 72-byte rows.
+- `UsbTransport` resolves its default VID/PID from the default model rather
+  than importing them from `constants`.
+
+### Fixed
+- `load_profiles()` returned an empty mapping: the bundled `profiles.json` was
+  looked up next to `printer/profiles.py` instead of at the package root, so
+  the built-in print-quality presets were never applied. This also silently
+  disabled the `profile` attribute of the `paperang-hacs` `print_image`
+  service. An explicit `profiles_path` is now the only file used, with a
+  missing or unreadable file yielding `{}` (#29).
+
+### Compatibility
+- Paperang P2 output is byte-for-byte identical to 1.2.1 (verified for image,
+  vertical image, text, QR, pickup code, and both test pages).
+- Existing imports, constructor signatures, and `UsbTransport` internals
+  (`vid`/`pid` positional order, `_dev`/`_ep_out`/`_ep_in`) are unchanged.
+
 ## [1.2.1] - 2026-07-19
 
 ### Fixed

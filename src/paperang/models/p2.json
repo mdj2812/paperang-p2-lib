@@ -1,0 +1,7 @@
+{
+  "name": "P2",
+  "vid": "0x4348",
+  "pids": ["0x5584"],
+  "print_width": 576,
+  "aliases": ["paperang_p2"]
+}
