@@ -1,0 +1,10 @@
+{
+  "name": "P2",
+  "vid": "0x4348",
+  "pids": ["0x5584"],
+  "print_width": 576,
+  "aliases": ["paperang_p2"],
+  "transports": ["usb", "spp"],
+  "bt_name_prefixes": ["paperang", "miaomiaoji"],
+  "bt_service_uuids": ["0000fee7-0000-1000-8000-00805f9b34fb"]
+}
