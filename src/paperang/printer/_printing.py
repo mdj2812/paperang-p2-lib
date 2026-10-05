@@ -296,6 +296,18 @@ class Paperang(PaperangPrinter):
         font_paths = self.font_paths_pickup or self._resolve_font_paths(BUNDLED_FONTS_PICKUP)
         font = self._load_font(font_paths, 96)
 
+        # Largest size that still fits the print head.  A 96px code is fine on
+        # the P2's 576 dots but overflows a 384-dot head, where it would be
+        # clipped — the complaint that started the D1 work.
+        margin = 20
+        available = self.print_width - 2 * margin
+        size = 96
+        while size > 12 and max(
+            font.getbbox(c)[2] - font.getbbox(c)[0] for c in codes
+        ) > available:
+            size = int(size * 0.9)
+            font = self._load_font(font_paths, size)
+
         # Measure the widest code for centering
         max_width = 0
         code_heights = []
