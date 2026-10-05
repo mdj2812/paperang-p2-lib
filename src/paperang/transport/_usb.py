@@ -84,8 +84,26 @@ class UsbTransport(Transport):
     # ── I/O ─────────────────────────────────────────────────
 
     def send(self, packet: bytes) -> None:
-        """Write a raw packet to the USB OUT endpoint."""
-        self._dev.write(self._ep_out.bEndpointAddress, packet)
+        """Write a raw packet to the USB OUT endpoint.
+
+        A timed-out write is retried: the printer can be busy (feeding paper
+        after a print, for example) and refuses new data until it is ready.  A
+        single timeout would otherwise abort the whole job, which is what made
+        consecutive print calls fail while the same calls worked one at a time.
+        Other USB errors are raised immediately.
+        """
+        import time
+
+        import usb.core  # for usb.core.USBError
+
+        for attempt in range(3):
+            try:
+                self._dev.write(self._ep_out.bEndpointAddress, packet)
+                return
+            except usb.core.USBError as exc:
+                if "timed out" not in str(exc).lower() or attempt == 2:
+                    raise
+                time.sleep(0.5 * (attempt + 1))
 
     def recv(self, timeout: int = 1000) -> bytes:
         """Read from the USB IN endpoint.
