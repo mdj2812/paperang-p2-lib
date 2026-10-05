@@ -101,6 +101,57 @@ class TestUsbConnect:
             mock_util.stop()
 
 
+class TestUsbSendRetry:
+    """A busy printer times out on writes; the transport retries those."""
+
+    @pytest.fixture
+    def connected(self, usb_transport):
+        mock_find, mock_dev = _mock_usb_core()
+        mock_util = _mock_usb_endpoints()
+        mock_find.start()
+        usb_transport.connect()
+        yield usb_transport, mock_dev
+        mock_find.stop()
+        mock_util.stop()
+
+    def test_retries_a_timed_out_write(self, connected):
+        import usb.core
+
+        transport, mock_dev = connected
+        mock_dev.write.side_effect = [
+            usb.core.USBTimeoutError("Operation timed out", 110, 110),
+            None,
+        ]
+
+        transport.send(b"packet")
+
+        assert mock_dev.write.call_count == 2
+
+    def test_gives_up_after_three_tries(self, connected):
+        import usb.core
+
+        transport, mock_dev = connected
+        mock_dev.write.side_effect = usb.core.USBTimeoutError(
+            "Operation timed out", 110, 110
+        )
+
+        with pytest.raises(usb.core.USBError):
+            transport.send(b"packet")
+
+        assert mock_dev.write.call_count == 3
+
+    def test_other_errors_are_not_retried(self, connected):
+        import usb.core
+
+        transport, mock_dev = connected
+        mock_dev.write.side_effect = usb.core.USBError("pipe error")
+
+        with pytest.raises(usb.core.USBError):
+            transport.send(b"packet")
+
+        assert mock_dev.write.call_count == 1
+
+
 class TestUsbMultiPid:
     """Searching several product IDs when the model is not known yet."""
 

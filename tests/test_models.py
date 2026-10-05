@@ -26,8 +26,14 @@ from paperang.constants import (
     VENDOR_ID,
 )
 from paperang.models import P2
+from paperang.models import models_for_usb, usb_pids
 from paperang.printer import PaperangP2, PaperangPrinter
-from paperang.protocol import CMD_PRINT_BITMAP, MAX_PACKET_DATA, unpack_response
+from paperang.protocol import (
+    CMD_PRINT_BITMAP,
+    CMD_SET_PAPER,
+    MAX_PACKET_DATA,
+    unpack_response,
+)
 from paperang.transport import Transport, UsbTransport
 
 # A 384-dot model, matching the parameters reported for the Paperang D1.
@@ -89,7 +95,7 @@ class TestModelRegistry:
         assert get_model("paperang-p2") is P2
         assert get_model("PAPERANG_P2") is P2
 
-    def test_alias_comes_from_the_model(self):
+    def test_alias_comes_from_the_model(self, monkeypatch):
         model = PrinterModel(
             name="Test 384",
             vid=0x4348,
@@ -97,25 +103,19 @@ class TestModelRegistry:
             print_width=384,
             aliases=("paperang_d1", "ZYB-D1"),
         )
-        MODELS["test384"] = model
-        try:
-            assert get_model("Test384") is model
-            assert get_model("test 384") is model
-            assert get_model("paperang_d1") is model
-            assert get_model("zyb-d1") is model
-        finally:
-            del MODELS["test384"]
+        monkeypatch.setitem(MODELS, "test384", model)
 
-    def test_runtime_registered_model_is_found(self):
+        assert get_model("Test384") is model
+        assert get_model("test 384") is model
+        assert get_model("paperang_d1") is model
+        assert get_model("zyb-d1") is model
+
+    def test_runtime_registered_model_is_found(self, monkeypatch):
         model = PrinterModel(name="Hot Plug", vid=1, pids=(9,), print_width=384)
-        MODELS["hotplug"] = model
-        try:
-            assert get_model("hotplug") is model
-            assert get_model("Hot Plug") is model
-        finally:
-            del MODELS["hotplug"]
-        with pytest.raises(UnknownModelError):
-            get_model("hotplug")
+        monkeypatch.setitem(MODELS, "hotplug", model)
+
+        assert get_model("hotplug") is model
+        assert get_model("Hot Plug") is model
 
     def test_instance_passthrough(self):
         assert get_model(MODEL_384) is MODEL_384
@@ -164,6 +164,68 @@ class TestPrinterModel:
     def test_missing_pids(self):
         with pytest.raises(ValueError, match="product ID"):
             PrinterModel(name="X", vid=1, pids=(), print_width=384)
+
+
+class TestD1Model:
+    """The D1 entry, added from a community report (#22)."""
+
+    def test_registered_geometry(self):
+        d1 = get_model("d1")
+        assert d1.name == "D1"
+        assert d1.vid == 0x4348
+        assert d1.pids == (0x5585,)
+        assert d1.print_width == 384
+        assert d1.line_bytes == 48
+
+    def test_aliases_match_the_reported_names(self):
+        d1 = get_model("d1")
+        assert get_model("Paperang_D1") is d1
+        assert get_model("paperang_d1") is d1
+        assert get_model("ZYB-D1") is d1
+        assert get_model("zyb d1") is d1
+
+    def test_transports_reflect_the_hardware_report(self):
+        """Classic SPP was confirmed printing on a D1 (#22)."""
+        d1 = get_model("d1")
+        assert d1.transports == ("usb", "spp")
+        assert d1.supports_usb
+        assert d1.supports_bluetooth
+        assert d1.bt_rfcomm_channel == 1
+        assert "paperang" in d1.bt_name_prefixes
+
+    def test_set_paper_type_is_disabled(self):
+        """The D1 hangs on CMD_SET_PAPER, so the model opts out."""
+        assert get_model("d1").supports_set_paper_type is False
+        assert get_model("p2").supports_set_paper_type is True
+
+    def test_pattern_test_skips_set_paper_type(self):
+        transport = MockTransport()
+        PaperangP2(transport, model="d1").print_pattern_test()
+        commands = [
+            frame["cmd"]
+            for packet in transport.sent_packets
+            for frame in unpack_response(packet)
+        ]
+        assert CMD_SET_PAPER not in commands
+
+    def test_p2_still_sends_set_paper_type(self):
+        transport = MockTransport()
+        PaperangP2(transport).print_pattern_test()
+        commands = [
+            frame["cmd"]
+            for packet in transport.sent_packets
+            for frame in unpack_response(packet)
+        ]
+        assert CMD_SET_PAPER in commands
+
+    def test_usb_pids_cover_both_models(self):
+        pids = usb_pids()
+        assert 0x5584 in pids
+        assert 0x5585 in pids
+
+    def test_models_for_usb_distinguishes_the_models(self):
+        assert models_for_usb(0x4348, 0x5584) == (get_model("p2"),)
+        assert models_for_usb(0x4348, 0x5585) == (get_model("d1"),)
 
 
 class TestConstantsStayP2:
@@ -391,6 +453,26 @@ class TestModelFiles:
             "bt_rfcomm_channel": channel,
         })
         with pytest.raises(InvalidModelError, match="between 1 and 30"):
+            load_model_file(path)
+
+    def test_set_paper_type_defaults_to_supported(self, tmp_path):
+        path = write_model(tmp_path, {
+            "name": "X",
+            "vid": 1,
+            "pids": [2],
+            "print_width": 384,
+        })
+        assert get_model(path).supports_set_paper_type is True
+
+    def test_set_paper_type_must_be_a_boolean(self, tmp_path):
+        path = write_model(tmp_path, {
+            "name": "X",
+            "vid": 1,
+            "pids": [2],
+            "print_width": 384,
+            "supports_set_paper_type": "no",
+        })
+        with pytest.raises(InvalidModelError, match="must be true or false"):
             load_model_file(path)
 
     def test_missing_file_rejected(self, tmp_path):

@@ -51,7 +51,7 @@ class TestResolveModel:
     def test_by_reported_name(self):
         assert resolve_model(reported_name="Paperang_P2").name == "P2"
 
-    def test_reported_name_wins_over_usb_id(self, caplog):
+    def test_reported_name_wins_over_usb_id(self, caplog, monkeypatch):
         # A stale table: this model uses another PID, but the device answered
         # on the P2 PID and reported a name that maps to it.
         other = PrinterModel(
@@ -61,16 +61,14 @@ class TestResolveModel:
             print_width=384,
             aliases=("other_name",),
         )
-        MODELS["other"] = other
-        try:
-            with caplog.at_level(logging.WARNING):
-                resolved = resolve_model(
-                    vid=0x4348, pid=0x5584, reported_name="other name"
-                )
-            assert resolved is other
-            assert "trusting the reported model" in caplog.text
-        finally:
-            del MODELS["other"]
+        monkeypatch.setitem(MODELS, "other", other)
+
+        with caplog.at_level(logging.WARNING):
+            resolved = resolve_model(
+                vid=0x4348, pid=0x5584, reported_name="other name"
+            )
+        assert resolved is other
+        assert "trusting the reported model" in caplog.text
 
     def test_unknown_device(self):
         with pytest.raises(UnknownModelError, match="Could not identify"):
@@ -115,25 +113,17 @@ class TestAutoDetect:
         assert printer.printer_model.name == "P2"
 
     def test_reported_name_overrides_usb_id(self, caplog):
-        # Same shape as above, driven through auto_detect().
-        other = PrinterModel(
-            name="D1",
-            vid=0x4348,
-            pids=(0x5585,),
-            print_width=384,
-            aliases=("paperang_d1",),
+        # The USB ID matches the P2, but the device reports a D1: the reported
+        # name wins and the disagreement is logged.
+        transport = FakeTransport(
+            reported="Paperang_D1", vid=0x4348, matched_pid=0x5584
         )
-        MODELS["d1"] = other
-        try:
-            transport = FakeTransport(
-                reported="Paperang_D1", vid=0x4348, matched_pid=0x5584
-            )
-            with caplog.at_level(logging.WARNING):
-                printer = Paperang.auto_detect(transport=transport)
-            assert printer.printer_model is other
-            assert printer.print_width == 384
-        finally:
-            del MODELS["d1"]
+        with caplog.at_level(logging.WARNING):
+            printer = Paperang.auto_detect(transport=transport)
+
+        assert printer.printer_model.name == "D1"
+        assert printer.print_width == 384
+        assert "trusting the reported model" in caplog.text
 
     def test_unknown_device_raises(self):
         transport = FakeTransport(vid=0x1111, matched_pid=0x2222)
@@ -146,6 +136,21 @@ class TestAutoDetect:
             transport=transport, font_paths_text=["/tmp/font.ttf"]
         )
         assert printer.font_paths_text == ["/tmp/font.ttf"]
+
+    def test_resolves_the_d1_from_its_usb_id(self):
+        transport = FakeTransport(vid=0x4348, matched_pid=0x5585)
+        printer = Paperang.auto_detect(transport=transport)
+
+        assert printer.printer_model.name == "D1"
+        assert printer.print_width == 384
+        assert printer.line_bytes == 48
+
+    def test_resolves_the_d1_from_the_reported_name(self):
+        """USB-only model: the name alone must be enough over Bluetooth."""
+        transport = FakeTransport(reported="Paperang_D1")
+        printer = Paperang.auto_detect(transport=transport)
+
+        assert printer.printer_model.name == "D1"
 
     def test_available_on_both_class_names(self):
         for cls in (Paperang, PaperangP2):

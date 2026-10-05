@@ -90,6 +90,9 @@ class PrinterModel:
             during discovery or SDP channel lookup.
         bt_rfcomm_channel: Known RFCOMM channel, when auto-detection via SDP
             is not available on a model.
+        supports_set_paper_type: Whether the printer accepts ``CMD_SET_PAPER``
+            (``set_paper_type()``).  Some models hang when it is sent, so it is
+            skipped for them.
     """
 
     name: str
@@ -101,6 +104,7 @@ class PrinterModel:
     bt_name_prefixes: tuple[str, ...] = ()
     bt_service_uuids: tuple[str, ...] = ()
     bt_rfcomm_channel: "int | None" = None
+    supports_set_paper_type: bool = True
 
     def __post_init__(self):
         if not self.pids:
@@ -201,6 +205,12 @@ class PrinterModel:
 
         channel = data.get("bt_rfcomm_channel")
 
+        supports_set_paper_type = data.get("supports_set_paper_type", True)
+        if not isinstance(supports_set_paper_type, bool):
+            raise InvalidModelError(
+                f"supports_set_paper_type{where} must be true or false"
+            )
+
         try:
             return cls(
                 name=str(data["name"]),
@@ -214,6 +224,7 @@ class PrinterModel:
                 bt_rfcomm_channel=(
                     None if channel is None else _as_int(channel, "bt_rfcomm_channel")
                 ),
+                supports_set_paper_type=supports_set_paper_type,
             )
         except InvalidModelError:
             raise

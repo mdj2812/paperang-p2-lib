@@ -13,13 +13,9 @@ from paperang.printer import Paperang
 from paperang.protocol import MAX_PACKET_DATA
 from paperang.transport import Transport
 
-# Every registered model, plus a synthetic 384-dot head standing in for the D1
-# until #22 adds it, so the 384/48 geometry is exercised today.
-TEST_384 = PrinterModel(
-    name="TEST-384", vid=0x4348, pids=(0x5599,), print_width=384,
-)
-
-MODEL_CASES = sorted(list_models().items()) + [("test-384", TEST_384)]
+# Every registered model.  The D1 covers the 384/48 geometry; if it ever leaves
+# the registry, this list still has to contain a model of each head width.
+MODEL_CASES = sorted(list_models().items())
 
 
 class MockTransport(Transport):

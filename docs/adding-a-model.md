@@ -4,6 +4,9 @@ Paperang printers share one protocol. What differs between models is *identity*
 (USB IDs, Bluetooth names) and *geometry* (print-head width), so adding a model
 means adding a small JSON file — no Python changes.
 
+The list of models that are already supported, and what has been verified for
+each, lives in [MODELS.md](../MODELS.md).
+
 ## Model vs profile
 
 - A **model** is the hardware: which device is connected and how wide its print
@@ -29,6 +32,7 @@ quality never gets baked into a hardware definition.
 | `bt_name_prefixes` | no | Bluetooth device-name prefixes used during discovery, lower-case. |
 | `bt_service_uuids` | no | Vendor service UUIDs, in the canonical 128-bit form. |
 | `bt_rfcomm_channel` | no | Known RFCOMM channel, for models where SDP probing cannot find one. |
+| `supports_set_paper_type` | no | Set to `false` for models that hang or misbehave when `CMD_SET_PAPER` is sent; the print paths then skip it. Defaults to `true`. |
 
 Derived values are deliberately not stored: `line_bytes` comes from
 `print_width`, and the protocol's per-packet row count comes from `line_bytes`.
