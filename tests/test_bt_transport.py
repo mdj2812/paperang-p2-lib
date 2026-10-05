@@ -444,6 +444,44 @@ class TestBtTransportConnect:
 class TestModelAwareBluetooth:
     """Model metadata drives discovery and channel selection."""
 
+    @patch("paperang.transport._bt.subprocess.run")
+    def test_falls_back_to_known_devices(self, mock_run):
+        """A scan with no results falls back to paired/known devices.
+
+        Some BlueZ builds return immediately from `scan on` with only
+        "SetDiscoveryFilter success" (seen on Debian 13), so the scan output
+        contains nothing to parse.
+        """
+        scan = MagicMock()
+        scan.stdout = "SetDiscoveryFilter success\n"
+        scan.stderr = ""
+
+        known = MagicMock()
+        known.stdout = "Device AA:BB:CC:DD:EE:FF Paperang_D1\n"
+        known.stderr = ""
+
+        mock_run.side_effect = [scan, known]
+
+        from paperang.transport._bt import _scan_devices
+
+        assert _scan_devices(timeout=1) == [("AA:BB:CC:DD:EE:FF", "Paperang_D1")]
+
+    @patch("paperang.transport._bt.subprocess.run")
+    def test_scan_uses_the_blocking_bluetoothctl_timeout(self, mock_run):
+        """`bluetoothctl --timeout N scan on` is used instead of `timeout N …`."""
+        proc = MagicMock()
+        proc.stdout = "[NEW] Device AA:BB:CC:DD:EE:FF Paperang_D1\n"
+        proc.stderr = ""
+        mock_run.return_value = proc
+
+        from paperang.transport._bt import _scan_devices
+
+        _scan_devices(timeout=3)
+
+        assert mock_run.call_args_list[0][0][0][:4] == [
+            "bluetoothctl", "--timeout", "3", "scan",
+        ]
+
     def test_module_constants_are_the_union_of_models(self):
         from paperang.models import bt_name_prefixes, bt_service_uuids
         from paperang.transport import PAPERANG_BT_NAMES, PAPERANG_SERVICE_UUID

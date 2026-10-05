@@ -8,7 +8,7 @@ in one JSON file per model under
 | Model | USB PID | Print head | Transports | Status |
 |-------|---------|------------|------------|--------|
 | P2 | `0x5584` | 576 dots (72 bytes/row) | USB, Bluetooth SPP | Verified |
-| D1 / ZYB-D1 | `0x5585` | 384 dots (48 bytes/row) | USB (Bluetooth untested) | Reported working over USB |
+| D1 / ZYB-D1 | `0x5585` | 384 dots (48 bytes/row) | USB, Bluetooth SPP | Verified (community report) |
 
 All models share the Paperang vendor ID `0x4348`.
 
@@ -35,13 +35,19 @@ contributed.
 
 - **P2** — verified. Covered by the test suite and used in production by the
   [Home Assistant integration](https://github.com/mdj2812/paperang-hacs).
-- **D1 / ZYB-D1** — from a community report
-  ([#22](https://github.com/mdj2812/paperang-p2-lib/issues/22)). The reporter
-  printed over USB after changing only the product ID and print width. Classic
-  Bluetooth and the 384-dot layout are still untested, so `transports` lists USB
-  only: a model never claims a transport that has not been confirmed. The D1
-  also hangs when `CMD_SET_PAPER` is sent, so `supports_set_paper_type` is
-  `false` for it and the print paths skip that command.
+- **D1 / ZYB-D1** — verified by a community report
+  ([#22](https://github.com/mdj2812/paperang-p2-lib/issues/22)): USB printing
+  and the 384-dot layout were confirmed, and classic Bluetooth SPP prints as
+  well, on RFCOMM channel 1.
+
+  Known hardware behaviour to be aware of:
+
+  - it does **not** answer `CMD_GET_MODEL` or `CMD_GET_STATUS`, so it cannot be
+    identified by name over Bluetooth — pass `model="d1"` there
+  - it hangs when `CMD_SET_PAPER` is sent, so `supports_set_paper_type` is
+    `false` and the print paths skip that command
+  - the official app's print darkness is reached around `heat_density=100`,
+    rather than the default 75
 
 ## Adding a model
 
