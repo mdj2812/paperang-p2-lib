@@ -4,6 +4,8 @@
   "pids": ["0x5585"],
   "print_width": 384,
   "aliases": ["paperang_d1", "zyb-d1"],
-  "transports": ["usb"],
+  "transports": ["usb", "spp"],
+  "bt_name_prefixes": ["paperang"],
+  "bt_rfcomm_channel": 1,
   "supports_set_paper_type": false
 }

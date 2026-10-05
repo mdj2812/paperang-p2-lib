@@ -184,12 +184,14 @@ class TestD1Model:
         assert get_model("ZYB-D1") is d1
         assert get_model("zyb d1") is d1
 
-    def test_only_verified_transports_are_declared(self):
-        """Bluetooth on the D1 is untested, so it is not claimed yet."""
+    def test_transports_reflect_the_hardware_report(self):
+        """Classic SPP was confirmed printing on a D1 (#22)."""
         d1 = get_model("d1")
-        assert d1.transports == ("usb",)
+        assert d1.transports == ("usb", "spp")
         assert d1.supports_usb
-        assert not d1.supports_bluetooth
+        assert d1.supports_bluetooth
+        assert d1.bt_rfcomm_channel == 1
+        assert "paperang" in d1.bt_name_prefixes
 
     def test_set_paper_type_is_disabled(self):
         """The D1 hangs on CMD_SET_PAPER, so the model opts out."""

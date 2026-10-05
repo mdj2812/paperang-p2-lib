@@ -90,19 +90,39 @@ def _scan_devices(
     prefixes = tuple(name_prefixes) if name_prefixes else tuple(PAPERANG_BT_NAMES)
     try:
         proc = subprocess.run(
-            ["timeout", str(int(timeout)), "bluetoothctl", "scan", "on"],
-            capture_output=True, text=True, timeout=timeout + 5,
+            ["bluetoothctl", "--timeout", str(int(timeout)), "scan", "on"],
+            capture_output=True, text=True, timeout=timeout + 10,
         )
+        output = proc.stdout + proc.stderr
     except (subprocess.TimeoutExpired, FileNotFoundError):
-        return []
+        output = ""
 
-    # Phase 1: collect all [NEW] Device entries (don't filter yet)
+    # Phase 1: collect all device lines (don't filter yet).  `scan on` emits
+    # "[NEW] Device …"; `bluetoothctl devices` (the fallback below) emits
+    # "Device …".
     all_devices: list[tuple[str, str]] = []
-    for line in proc.stdout.splitlines() + proc.stderr.splitlines():
-        if "[NEW] Device" in line:
+    for line in output.splitlines():
+        if "Device " in line:
             parts = line.split("Device ", 1)[-1].strip().split(" ", 1)
             if len(parts) >= 2:
                 all_devices.append((parts[0], parts[1]))
+
+    # Some BlueZ builds return immediately from `scan on` without printing
+    # results.  Fall back to the devices BlueZ already knows about, which
+    # covers already-paired printers.
+    if not all_devices:
+        try:
+            known = subprocess.run(
+                ["bluetoothctl", "devices"],
+                capture_output=True, text=True, timeout=5,
+            )
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            return []
+        for line in (known.stdout + known.stderr).splitlines():
+            if "Device " in line:
+                parts = line.split("Device ", 1)[-1].strip().split(" ", 1)
+                if len(parts) >= 2:
+                    all_devices.append((parts[0], parts[1]))
 
     # Phase 2: accept by name (fast path) or UUID (fallback)
     devices: list[tuple[str, str]] = []
